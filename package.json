@@ -1,0 +1,34 @@
+{
+  "name": "@fuzzy/errors",
+  "version": "1.0.0",
+  "description": "Type-safe custom error classes with full context support",
+  "main": "dist/main.js",
+  "module": "dist/main.mjs",
+  "types": "dist/main.d.ts",
+  "type": "module",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": ["error", "typescript", "context"],
+  "author": "aFuzzyBear",
+  "license": "MIT",
+  "packageManager": "pnpm@10.7.1",
+  "scripts": {
+    "dev": "tsx --watch --no-cache src/main.ts",
+    "build": "tsup",
+		"test": "node --import tsx --experimental-test-coverage --test-reporter=spec  --test \"src/**/*.test.ts\"",
+		"test:watch": "node --import tsx --test-reporter=spec  --test --watch \"src/**/*.test.ts\" \"tests/**/*.test.ts\"",
+    "check": "tsc --noEmit",
+    "lint": "biome lint --fix",
+    "format": "biome format --fix"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/node": "^22.14.0",
+    "tsup": "^8.4.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}
