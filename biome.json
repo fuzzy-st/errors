@@ -25,6 +25,9 @@
       "recommended": true,
       "suspicious":{
         "noExplicitAny":"info"
+      },
+      "complexity":{
+        "noBannedTypes":"info"
       }
     }
   },
