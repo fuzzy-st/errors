@@ -11,15 +11,19 @@
     "README.md",
     "LICENSE"
   ],
-  "keywords": ["error", "typescript", "context"],
+  "keywords": [
+    "error",
+    "typescript",
+    "context"
+  ],
   "author": "aFuzzyBear",
   "license": "MIT",
   "packageManager": "pnpm@10.7.1",
   "scripts": {
     "dev": "tsx --watch --no-cache src/main.ts",
     "build": "tsup",
-		"test": "node --import tsx --experimental-test-coverage --test-reporter=spec  --test \"src/**/*.test.ts\"",
-		"test:watch": "node --import tsx --test-reporter=spec  --test --watch \"src/**/*.test.ts\" \"tests/**/*.test.ts\"",
+    "test": "node --import tsx --experimental-test-coverage --test-reporter=spec  --test \"src/**/*.test.ts\"",
+    "test:watch": "node --import tsx --test-reporter=spec  --test --watch \"src/**/*.test.ts\" \"tests/**/*.test.ts\"",
     "check": "tsc --noEmit",
     "lint": "biome lint --fix",
     "format": "biome format --fix"
@@ -30,5 +34,16 @@
     "tsup": "^8.4.0",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2"
-  }
+  },
+  "directories": {
+    "doc": "docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fuzzy-st/errors.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fuzzy-st/errors/issues"
+  },
+  "homepage": "https://github.com/fuzzy-st/errors#readme"
 }
