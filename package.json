@@ -1,5 +1,5 @@
 {
-  "name": "@fuzzy/errors",
+  "name": "@fuzzy-street/errors",
   "version": "0.1.0",
   "description": "Type-safe custom error classes with full context support",
   "main": "dist/main.js",
