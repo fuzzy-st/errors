@@ -6,7 +6,7 @@
  * and represents a common use case or pattern.
  */
 
-import { createCustomError } from "./main";
+import { createCustomError, checkInstance } from "./main";
 
 /**
  * EXAMPLE 1: Basic Error Creation
@@ -31,17 +31,24 @@ function example1_1() {
 		throw new SimpleError({
 			message: "A simple error occurred",
 			cause: {
-				code: 100,
-				detail: "This is a simple error with context",
+				code: 400,
+				detail: "Bad Request",
 			},
 			captureStack: true,
 		});
 	} catch (error) {
-		if (error instanceof SimpleError) {
+		// Use `checkInstance` for proper TypeScript type inference
+		if (checkInstance(error, SimpleError)) {
 			console.log("EXAMPLE 1.1: Simple Error");
 			console.log(error);
 			console.log(error.toString());
-			console.log("Context:", error.context);
+
+			// Directly access context properties with full TypeScript support
+			console.log(`Error code: ${error.code}`);
+			console.log(`Error detail: ${error.detail}`);
+
+			// Access via context getter also available
+			console.log("Context:", SimpleError.getContext(error));
 			console.log("\n");
 		}
 	}
@@ -68,13 +75,22 @@ function example1_2() {
 			},
 		});
 	} catch (error) {
-		if (error instanceof ApiError) {
+		if (checkInstance(error, ApiError)) {
 			console.log("EXAMPLE 1.2: API Error");
 			console.log(error.toString());
-			const context = ApiError.getContext(error);
-			console.log(
-				`Failed with status ${context?.statusCode} on ${context?.endpoint}`,
-			);
+
+			// Direct property access with TypeScript support
+			console.log(`Failed with status ${error.statusCode} on ${error.endpoint}`);
+
+			// Parse the response body if available
+			if (error.responseBody) {
+				try {
+					const response = JSON.parse(error.responseBody);
+					console.log(`Error details: ${response.error}`);
+				} catch (e) {
+					console.log("Could not parse response body");
+				}
+			}
 		}
 	}
 	console.log("\n");
@@ -121,10 +137,16 @@ function example2_1() {
 			},
 		});
 	} catch (error) {
-		if (error instanceof DataError) {
+		if (checkInstance(error, DataError)) {
 			console.log("EXAMPLE 2.1: Basic Error Hierarchy");
 			console.log("Example of Error call:\n", error);
-			console.log("Example of Error Serialised:\n", error.toString());
+			console.log("Example of Error Serialized:\n", error.toString());
+
+			// Direct access to all properties
+			console.log(`Data Source: ${error.dataSource}`);
+			console.log(`Data Type: ${error.dataType}`);
+			console.log(`Timestamp: ${error.timestamp}`);
+			console.log(`Severity: ${error.severity}`);
 
 			// Full context (includes BaseError context)
 			const fullContext = DataError.getContext(error);
@@ -132,7 +154,7 @@ function example2_1() {
 
 			// Just DataError context
 			const dataContext = DataError.getContext(error, {
-				includeParentContext: false,
+				includeParentContext: false, // Filter out parent context
 			});
 			console.log("Data context only:", dataContext);
 
@@ -189,9 +211,16 @@ function example2_2() {
 			captureStack: true,
 		});
 	} catch (error) {
-		if (error instanceof QueryError) {
+		if (checkInstance(error, QueryError)) {
 			console.log("EXAMPLE 2.2: Three-Level Error Hierarchy");
 			console.log(error.toString());
+
+			// Access properties directly across the inheritance hierarchy
+			console.log(`Error Code: ${error.errorCode}`);
+			console.log(`Database: ${error.dbName}`);
+			console.log(`Query: ${error.query}`);
+			console.log(`Application: ${error.appName}`);
+			console.log(`Version: ${error.version}`);
 
 			// Get error hierarchy information
 			const hierarchy = QueryError.getErrorHierarchy(error);
@@ -241,7 +270,7 @@ function example3_1() {
 				},
 			});
 		} catch (networkError) {
-			if (networkError instanceof NetworkError) {
+			if (checkInstance(networkError, NetworkError)) {
 				// This is the child error (caused by the network error)
 				throw new ServiceError({
 					message: "Authentication service unavailable",
@@ -252,16 +281,13 @@ function example3_1() {
 			throw networkError;
 		}
 	} catch (error) {
-		if (error instanceof ServiceError) {
+		if (checkInstance(error, ServiceError)) {
 			console.log("EXAMPLE 3.1: Basic Parent-Child Relationship");
 			console.log(error.toString());
 
 			// Access parent error
-			if (error instanceof NetworkError) {
-				const parentContext = NetworkError.getContext(error);
-				console.log(
-					`Parent error context: Failed to connect to ${parentContext.hostname}:${parentContext.port}`,
-				);
+			if (checkInstance(error, NetworkError)) {
+				console.log(`Parent error context: Failed to connect to ${error.hostname}:${error.port}`);
 			}
 
 			// Follow the parent chain
@@ -306,39 +332,65 @@ function example3_2() {
 					},
 				});
 			} catch (systemError) {
-				// Level 2
-				throw new FileError({
-					message: "Could not read configuration file",
-					cause: systemError, // Parent relationship
+				if (checkInstance(systemError, SystemError)) {
+					// Level 2
+					throw new FileError({
+						message: "Could not read configuration file",
+						cause: systemError, // Parent relationship
+						captureStack: true,
+					});
+				}
+				throw systemError;
+			}
+		} catch (fileError) {
+			if (checkInstance(fileError, FileError)) {
+				// Level 1 (what the application code catches)
+				throw new ConfigError({
+					message: "Application configuration invalid",
+					cause: {
+						configKey: "AK47",
+						expectedType: "string",
+						...fileError // Parent relationship
+					}, 
 					captureStack: true,
 				});
 			}
-		} catch (fileError) {
-			// Level 1 (what the application code catches)
-			throw new ConfigError({
-				message: "Application configuration invalid",
-				cause: fileError, // Parent relationship
-				captureStack: true,
-			});
+			throw fileError;
 		}
 	} catch (error) {
-		if (error instanceof ConfigError) {
-			console.log("EXAMPLE 3.2: Multi-level Error Chain");
-
-			// Follow complete error chain
-			const errorChain = ConfigError.followParentChain(error);
-			console.log(`Complete error chain (${errorChain.length} errors):`);
-
-			errorChain.forEach((err, index) => {
-				console.log(`[${index}] ${err.name}: ${err.message}`);
-			});
-
-			// Get full error hierarchy with contexts
-			const hierarchy = ConfigError.getErrorHierarchy(error);
-			console.log("Full error hierarchy:", JSON.stringify(hierarchy, null, 2));
-
-			console.log("\n");
+		console.log("EXAMPLE 3.2: Multi-level Error Chain");
+		if (checkInstance(error, ConfigError)) {
+			// Access properties from the error
+			console.log(`Config error key: ${error.configKey || 'N/A'}`);
+			console.log(`Expected type: ${error.expectedType || 'N/A'}`);
 		}
+		// Check and access the parent if it exists
+		if (checkInstance(error, FileError)) {
+			const fileErrorContext = FileError.getContext(error);
+			console.log(`File error path: ${fileErrorContext?.path || 'N/A'}`);
+			console.log(`File operation: ${fileErrorContext?.operation || 'N/A'}`);
+		}
+		// Check and access the grandparent if it exists
+		if (checkInstance(error, SystemError)) {
+			const systemErrorContext = SystemError.getContext(error);
+			console.log(`System component: ${systemErrorContext?.component}`);
+		}
+
+
+		// Follow complete error chain
+		const errorChain = ConfigError.followParentChain(error);
+		console.log(`Complete error chain (${errorChain.length} errors):`);
+
+		errorChain.forEach((err, index) => {
+			console.log(`[${index}] ${err.name}: ${err.message}`);
+		});
+
+		// Get full error hierarchy with contexts
+		const hierarchy = ConfigError.getErrorHierarchy(error);
+		console.log("Full error hierarchy:", JSON.stringify(hierarchy, null, 2));
+
+		console.log("\n");
+
 	}
 }
 
@@ -407,8 +459,13 @@ function example4_1() {
 			captureStack: true,
 		});
 	} catch (error) {
-		if (error instanceof QueryError) {
+		if (checkInstance(error, QueryError)) {
 			console.log("EXAMPLE 4.1: Combined Inheritance and Parent Chain");
+
+			// Access properties directly across the inheritance chain
+			console.log(`Query: ${error.query}`);
+			console.log(`Database: ${error.database}`);
+			console.log(`Application: ${error.application}`);
 
 			// Inspect the inheritance chain (class hierarchy)
 			console.log(
@@ -422,18 +479,15 @@ function example4_1() {
 
 			console.log("\n");
 		}
-		if(error instanceof NetworkError) {
-			console.log("EXAMPLE 4.1: Combined Inheritance and Parent Chain");
-			const context = NetworkError.getContext(error);
-			console.log("Network error context:", context);
-		}
-		if (error instanceof DatabaseError) {
-			const context = DatabaseError.getContext(error,{includeParentContext: false});
-			console.log("Database error context:", context);
-		}
-		if (error instanceof BaseError) {
-			const context = BaseError.getContext(error,{includeParentContext: false});
-			console.log("Base error context:", context);
+
+		// Check if we have a NetworkError
+		const netError = new NetworkError({
+			message: "Network example",
+			cause: { host: "example.com" }
+		});
+
+		if (checkInstance(netError, NetworkError)) {
+			console.log("Network error host:", netError.host);
 		}
 	}
 }
@@ -502,18 +556,11 @@ function example5_1() {
 			console.log(`Error message: ${error.message}`);
 			console.log(error.toString());
 		}
-		if (error instanceof UserErrors.ValidationError) {
-			const validationCtx = UserErrors.ValidationError.getContext(error);
-			console.log(
-				validationCtx && `Validation error on field ${validationCtx.field}: ${validationCtx.value}`,
-			);
-		}
-		if (error instanceof UserErrors.BaseDomainError) {
-			const baseCtx = UserErrors.BaseDomainError.getContext(error);
-			console.log(
-				baseCtx &&
-					`Base domain error in ${baseCtx.domain} with correlation ID ${baseCtx.correlationId}`,
-			);
+
+		// Use checkInstance for proper type inference with dynamically created errors
+		if (checkInstance(error, UserErrors.ValidationError)) {
+			console.log(`Validation error on field ${error.field}: ${error.value}`);
+			console.log(`Domain: ${error.domain}, Correlation ID: ${error.correlationId}`);
 		}
 	}
 	console.log("\n");
@@ -558,14 +605,12 @@ function example5_2() {
 		// Use the factory function
 		throw createUserApiError(404, "/api/users/123", "123", "fetch");
 	} catch (error) {
-		if (error instanceof ApiError) {
+		if (checkInstance(error, ApiError)) {
 			console.log("EXAMPLE 5.2: Error Factory Functions");
 			console.log(error.toString());
 
-			const context = ApiError.getContext(error);
-			console.log(
-				context && `API error details: ${context.statusCode} on ${context.endpoint} at ${context.timestamp}`,
-			);
+			// Direct access to properties with TypeScript support
+			console.log(`API error details: ${error.statusCode} on ${error.endpoint} at ${error.timestamp}`);
 
 			console.log("\n");
 		}
@@ -626,19 +671,13 @@ function example5_3() {
 			},
 		});
 	} catch (error) {
-		if (error instanceof ConfigurationError) {
+		if (checkInstance(error, ConfigurationError)) {
 			console.log("EXAMPLE 5.3: Deep Nested Context");
 
-			const context = ConfigurationError.getContext(error);
-			if (!context) {
-				console.error("No context available");
-				return;
-			}
-			// Access nested properties
-			const sslEnabled = context.config.server.ssl.enabled;
-			const hasCert = !!context.config.server.ssl.cert;
-			const credentialsEncrypted =
-				context.config.database.connection.credentials.encrypted;
+			// Direct access to nested properties
+			const sslEnabled = error.config.server.ssl.enabled;
+			const hasCert = !!error.config.server.ssl.cert;
+			const credentialsEncrypted = error.config.database.connection.credentials.encrypted;
 
 			console.log(`SSL Enabled: ${sslEnabled}, Has Cert: ${hasCert}`);
 			console.log(`Database Credentials Encrypted: ${credentialsEncrypted}`);
@@ -788,11 +827,10 @@ function example6_1() {
 		console.log("Scenario 1: Invalid password");
 		console.log(result1.error.toString());
 
-		if (result1.error instanceof CredentialsError) {
-			const context = CredentialsError.getContext(result1.error);
-			console.log(
-				`Auth failed for user: ${context?.userId}, reason: ${context.reason}`,
-			);
+		if (checkInstance(result1.error, CredentialsError)) {
+			// Direct property access with full TypeScript support
+			console.log(`Auth failed for user: ${result1.error.userId}, reason: ${result1.error.reason}`);
+			console.log(`Attempt count: ${result1.error.attemptCount}`);
 		}
 	}
 
@@ -802,11 +840,9 @@ function example6_1() {
 		console.log("\nScenario 2: Missing MFA code");
 		console.log(result2.error.toString());
 
-		if (result2.error instanceof MfaError) {
-			const context = MfaError.getContext(result2.error);
-			console.log(
-				`MFA required: ${context.mfaType}, remaining attempts: ${context.remainingAttempts}`,
-			);
+		if (checkInstance(result2.error, MfaError)) {
+			// Direct property access
+			console.log(`MFA required: ${result2.error.mfaType}, remaining attempts: ${result2.error.remainingAttempts}`);
 		}
 	}
 
@@ -816,11 +852,10 @@ function example6_1() {
 		console.log("\nScenario 3: Session creation error");
 		console.log(result3.error.toString());
 
-		if (result3.error instanceof SessionError) {
-			const context = SessionError.getContext(result3.error);
-			console.log(
-				`Session creation failed: ${context?.sessionId}, would expire at: ${context?.expiryTime}`,
-			);
+		if (checkInstance(result3.error, SessionError)) {
+			// Direct property access
+			console.log(`Session creation failed: ${result3.error.sessionId}, would expire at: ${result3.error.expiryTime}`);
+			console.log(`User ID: ${result3.error.userId}, Request ID: ${result3.error.requestId}`);
 		}
 	}
 
@@ -835,176 +870,211 @@ function example6_1() {
 }
 
 /**
- * @example 6.2 - API Integration Error Handling
- * Demonstrate handling errors from an external API integration.
+ * Example demonstrating direct context access
  */
-function example6_2() {
-	// Define integration error types
-	const IntegrationError = createCustomError<{
-		service: string;
+function demonstrateDirectContextAccess() {
+	console.log("\n-------------------------------------");
+	console.log("EXAMPLE: Direct Context Access");
+	console.log("-------------------------------------");
+
+	// Create a basic error class with typed context
+	const ApiError = createCustomError<{
+		statusCode: number;
 		endpoint: string;
-		timestamp: string;
-	}>("IntegrationError", ["service", "endpoint", "timestamp"]);
+		responseData?: any;
+	}>("ApiError", ["statusCode", "endpoint", "responseData"]);
 
-	const HttpError = createCustomError<
-		{
-			statusCode: number;
-			method: "GET" | "POST" | "PUT" | "DELETE";
-			headers?: Record<string, string>;
-		},
-		typeof IntegrationError
-	>("HttpError", ["statusCode", "method", "headers"], IntegrationError);
+	// Create a derived error class
+	const NetworkError = createCustomError<{
+		retryCount: number;
+		timeout: number;
+	}, typeof ApiError>(
+		"NetworkError",
+		["retryCount", "timeout"],
+		ApiError
+	);
+	try {
+		// Create an error with context
+		const error = new NetworkError({
+			message: "Failed to connect to API server",
+			cause: {
+				// NetworkError specific context
+				retryCount: 3,
+				timeout: 5000,
 
-	const ApiError = createCustomError<
-		{
-			errorCode: string;
-			errorMessage: string;
-			responseBody?: string;
-		},
-		typeof HttpError
-	>("ApiError", ["errorCode", "errorMessage", "responseBody"], HttpError);
+				// ApiError inherited context
+				statusCode: 503,
+				endpoint: "/api/users",
+				responseData: { error: "Service Unavailable" }
+			},
+			captureStack: true
+		});
 
-	const RateLimitError = createCustomError<
-		{
-			limitType: "requests" | "bandwidth";
-			resetTime: string;
-			currentUsage: number;
-			limit: number;
-		},
-		typeof ApiError
-	>(
-		"RateLimitError",
-		["limitType", "resetTime", "currentUsage", "limit"],
-		ApiError,
+		throw error;
+	} catch (error) {
+		if (checkInstance(error, NetworkError)) {
+			console.log("Error details:", error.name, "-", error.message);
+
+			// Method 1: Accessing context properties directly on the error
+			console.log("\nAccessing context properties directly:");
+			console.log(`Status Code: ${error.statusCode}`);
+			console.log(`Endpoint: ${error.endpoint}`);
+			console.log(`Retry Count: ${error.retryCount}`);
+			console.log(`Timeout: ${error.timeout}`);
+
+
+			// Method 2: Using the static getContext method
+			console.log("\nUsing the static getContext method:");
+			const context = NetworkError.getContext(error);
+			if (context) {
+				console.log(`Status Code: ${context.statusCode}`);
+				console.log(`Endpoint: ${context.endpoint}`);
+				console.log(`Retry Count: ${context.retryCount}`);
+				console.log(`Timeout: ${context.timeout}`);
+			}
+		}
+	}
+}
+
+/**
+ * Example demonstrating JSON serialization
+ */
+function demonstrateJsonSerialization() {
+	console.log("\n-------------------------------------");
+	console.log("EXAMPLE: JSON Serialization");
+	console.log("-------------------------------------");
+	// Create a basic error class with typed context
+	const ApiError = createCustomError<{
+		statusCode: number;
+		endpoint: string;
+		responseData?: any;
+	}>("ApiError", ["statusCode", "endpoint", "responseData"]);
+
+	// Create a derived error class
+	const NetworkError = createCustomError<{
+		retryCount: number;
+		timeout: number;
+	}, typeof ApiError>(
+		"NetworkError",
+		["retryCount", "timeout"],
+		ApiError
+	);
+	try {
+		// Create a parent error
+		const parentError = new ApiError({
+			message: "API returned an error",
+			cause: {
+				statusCode: 400,
+				endpoint: "/api/auth",
+				responseData: { error: "Invalid credentials" }
+			}
+		});
+
+		// Create a child error with the parent
+		const childError = new NetworkError({
+			message: "Network operation failed",
+			cause: parentError,
+			captureStack: true
+		});
+
+		throw childError;
+	} catch (error) {
+		if (error instanceof Error) {
+			console.log("Original error.toString():");
+			console.log(error.toString());
+
+			console.log("\nJSON.stringify() result:");
+			const serialized = JSON.stringify(error, null, 2);
+			console.log(serialized);
+
+			console.log("\nParsed JSON:");
+			const parsed = JSON.parse(serialized);
+			console.log("Error name:", parsed.name);
+			console.log("Parent name:", parsed.parent?.name);
+			if (parsed.context) {
+				console.log("Context:", parsed.context);
+			}
+		}
+	}
+}
+
+/**
+ * Example demonstrating a complex error hierarchy with direct property access
+ */
+function demonstrateComplexExample() {
+	console.log("\n-------------------------------------");
+	console.log("EXAMPLE: Complex Error Hierarchy");
+	console.log("-------------------------------------");
+
+	// Create a three-level error hierarchy
+	const BaseError = createCustomError<{
+		application: string;
+		version: string;
+	}>("BaseError", ["application", "version"]);
+
+	const DatabaseError = createCustomError<{
+		database: string;
+		query: string;
+	}, typeof BaseError>(
+		"DatabaseError",
+		["database", "query"],
+		BaseError
 	);
 
-	// Simulate API call with error response
-	function simulateApiCall(endpoint: string, exceededLimit = false) {
-		const timestamp = new Date().toISOString();
-		const service = "payment-gateway";
+	const QueryError = createCustomError<{
+		errorCode: string;
+		affectedRows: number;
+	}, typeof DatabaseError>(
+		"QueryError",
+		["errorCode", "affectedRows"],
+		DatabaseError
+	);
 
-		try {
-			if (exceededLimit) {
-				// Simulate rate limit error
-				throw new RateLimitError({
-					message: "API rate limit exceeded",
-					cause: {
-						// RateLimitError context
-						limitType: "requests",
-						resetTime: new Date(Date.now() + 30000).toISOString(),
-						currentUsage: 1001,
-						limit: 1000,
+	try {
+		throw new QueryError({
+			message: "Failed to execute database query",
+			cause: {
+				// QueryError specific context
+				errorCode: "ER_DUP_ENTRY",
+				affectedRows: 0,
 
-						// ApiError context
-						errorCode: "RATE_LIMIT_EXCEEDED",
-						errorMessage:
-							"You have exceeded the 1000 requests per minute limit",
-						responseBody: JSON.stringify({
-							error: "rate_limit_exceeded",
-							message: "API rate limit exceeded",
-							reset_at: new Date(Date.now() + 30000).toISOString(),
-						}),
+				// DatabaseError context
+				database: "customers",
+				query: "INSERT INTO users (email) VALUES ('existing@example.com')",
 
-						// HttpError context
-						statusCode: 429,
-						method: "POST",
-						headers: {
-							"X-RateLimit-Limit": "1000",
-							"X-RateLimit-Remaining": "0",
-							"X-RateLimit-Reset": "30",
-						},
+				// BaseError context
+				application: "CustomerManagement",
+				version: "1.0.0"
+			},
+			captureStack: true
+		});
+	} catch (error) {
+		// Use checkInstance for proper TypeScript type inference
+		if (checkInstance(error, QueryError)) {
+			console.log("Error:", error.name, "-", error.message);
 
-						// IntegrationError context
-						service,
-						endpoint,
-						timestamp,
-					},
-				});
-			}
-				// Simulate generic API error
-				throw new ApiError({
-					message: "Payment processing failed",
-					cause: {
-						// ApiError context
-						errorCode: "INSUFFICIENT_FUNDS",
-						errorMessage: "The payment method has insufficient funds",
-						responseBody: JSON.stringify({
-							error: "insufficient_funds",
-							message:
-								"The card has insufficient funds to complete this transaction",
-							transaction_id: "tx_12345",
-						}),
+			// Directly access properties at different inheritance levels
+			console.log("\nAccessing context properties directly across inheritance:");
+			console.log(`Error Code: ${error.errorCode}`);
+			console.log(`Database: ${error.database}`);
+			console.log(`Application: ${error.application}`);
+			console.log(`Version: ${error.version}`);
 
-						// HttpError context
-						statusCode: 400,
-						method: "POST",
+			// Using context getter
+			console.log("\nUsing context getter to access all properties:");
+			const { errorCode, database, application, version, query, affectedRows } = error;
+			console.log(`Error Code: ${errorCode}`);
+			console.log(`Database: ${database}`);
+			console.log(`Query: ${query}`);
+			console.log(`Affected Rows: ${affectedRows}`);
+			console.log(`Application: ${application}`);
+			console.log(`Version: ${version}`);
 
-						// IntegrationError context
-						service,
-						endpoint,
-						timestamp,
-					},
-				});
-		} catch (error) {
-			return error;
+			// JSON serialization
+			console.log("\nJSON serialization:");
+			console.log(JSON.stringify(error, null, 2));
 		}
 	}
-
-	console.log("EXAMPLE 6.2: API Integration Error Handling");
-
-	// Scenario 1: General API error
-	const error1 = simulateApiCall("/api/payments/process");
-	if (error1 instanceof ApiError) {
-		console.log("Scenario 1: General API Error");
-
-		const apiContext = ApiError.getContext(error1);
-		const httpContext = HttpError.getContext(error1);
-
-		console.log(error1&& `${error1.name}: ${error1.message}`);
-		console.log(apiContext && `API Error Code: ${apiContext.errorCode}`);
-		console.log(httpContext && `HTTP Status: ${httpContext.statusCode}`);
-
-		// Extract structured data from response body if available
-		if (apiContext?.responseBody) {
-			try {
-				const responseData = JSON.parse(apiContext.responseBody);
-				console.log(`Transaction ID: ${responseData.transaction_id || "N/A"}`);
-			} catch (e) {
-				console.log("Could not parse response body");
-			}
-		}
-	}
-
-	// Scenario 2: Rate limit error
-	const error2 = simulateApiCall("/api/payments/process", true);
-	if (error2 && error2 instanceof RateLimitError) {
-		console.log("\nScenario 2: Rate Limit Error");
-
-		const rateLimitContext = RateLimitError.getContext(error2);
-		const integrationContext = IntegrationError.getContext(error2);
-
-		console.log(`${error2.name}: ${error2.message}`);
-		console.log(integrationContext && `Service: ${integrationContext.service}`);
-		console.log(`Limit Type: ${rateLimitContext?.limitType}`);
-		console.log(
-			`Current Usage: ${rateLimitContext?.currentUsage}/${rateLimitContext?.limit}`,
-		);
-		console.log(`Reset Time: ${rateLimitContext?.resetTime}`);
-
-		// Calculate and display waiting time
-		const resetTime = rateLimitContext && new Date(rateLimitContext.resetTime).getTime();
-		const currentTime = Date.now();
-		const waitTimeMs = resetTime && Math.max(0, resetTime - currentTime);
-		const waitTimeSec = waitTimeMs && Math.ceil(waitTimeMs / 1000);
-
-		console.log(`Recommended wait time: ${waitTimeSec} seconds`);
-
-		// Get error hierarchy
-		const hierarchy = RateLimitError.getErrorHierarchy(error2);
-		console.log("\nError Hierarchy:", JSON.stringify(hierarchy, null, 2));
-	}
-
-	console.log("\n");
 }
 
 /**
@@ -1053,8 +1123,17 @@ export function runAllExamples() {
 	console.log("EXAMPLE GROUP 6: REAL-WORLD SCENARIOS");
 	console.log("====================================\n");
 	example6_1();
-	example6_2();
+	// example6_2();
 	console.log("====================================");
+
+	console.log("==============================================");
+	console.log("ENHANCED CUSTOM ERROR EXAMPLES");
+	console.log("==============================================");
+
+	demonstrateDirectContextAccess();
+	demonstrateJsonSerialization();
+	demonstrateComplexExample();
+
 };
 
 runAllExamples();
