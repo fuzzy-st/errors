@@ -34,17 +34,17 @@ Unlike standard JavaScript `class Error`'s or basic custom error extensions (for
 ## 📦 Installation
 
 ```bash
-npm install @fuzzy/errors
+npm install @fuzzy-street/errors
 # or
-yarn add @fuzzy/errors
+yarn add @fuzzy-street/errors
 # or
-pnpm add @fuzzy/errors
+pnpm add @fuzzy-street/errors
 ```
 
 ## 🚀 Quick Start
 
 ```typescript
-import { createCustomError } from '@fuzzy/errors';
+import { createCustomError } from '@fuzzy-street/errors';
 
 // Create a basic error class
 const ApiError = createCustomError<{
