@@ -80,7 +80,9 @@ function example1_2() {
 			console.log(error.toString());
 
 			// Direct property access with TypeScript support
-			console.log(`Failed with status ${error.statusCode} on ${error.endpoint}`);
+			console.log(
+				`Failed with status ${error.statusCode} on ${error.endpoint}`,
+			);
 
 			// Parse the response body if available
 			if (error.responseBody) {
@@ -287,7 +289,9 @@ function example3_1() {
 
 			// Access parent error
 			if (checkInstance(error, NetworkError)) {
-				console.log(`Parent error context: Failed to connect to ${error.hostname}:${error.port}`);
+				console.log(
+					`Parent error context: Failed to connect to ${error.hostname}:${error.port}`,
+				);
 			}
 
 			// Follow the parent chain
@@ -350,8 +354,8 @@ function example3_2() {
 					cause: {
 						configKey: "AK47",
 						expectedType: "string",
-						...fileError // Parent relationship
-					}, 
+						...fileError, // Parent relationship
+					},
 					captureStack: true,
 				});
 			}
@@ -361,21 +365,20 @@ function example3_2() {
 		console.log("EXAMPLE 3.2: Multi-level Error Chain");
 		if (checkInstance(error, ConfigError)) {
 			// Access properties from the error
-			console.log(`Config error key: ${error.configKey || 'N/A'}`);
-			console.log(`Expected type: ${error.expectedType || 'N/A'}`);
+			console.log(`Config error key: ${error.configKey || "N/A"}`);
+			console.log(`Expected type: ${error.expectedType || "N/A"}`);
 		}
 		// Check and access the parent if it exists
 		if (checkInstance(error, FileError)) {
 			const fileErrorContext = FileError.getContext(error);
-			console.log(`File error path: ${fileErrorContext?.path || 'N/A'}`);
-			console.log(`File operation: ${fileErrorContext?.operation || 'N/A'}`);
+			console.log(`File error path: ${fileErrorContext?.path || "N/A"}`);
+			console.log(`File operation: ${fileErrorContext?.operation || "N/A"}`);
 		}
 		// Check and access the grandparent if it exists
 		if (checkInstance(error, SystemError)) {
 			const systemErrorContext = SystemError.getContext(error);
 			console.log(`System component: ${systemErrorContext?.component}`);
 		}
-
 
 		// Follow complete error chain
 		const errorChain = ConfigError.followParentChain(error);
@@ -390,7 +393,6 @@ function example3_2() {
 		console.log("Full error hierarchy:", JSON.stringify(hierarchy, null, 2));
 
 		console.log("\n");
-
 	}
 }
 
@@ -470,7 +472,9 @@ function example4_1() {
 			// Inspect the inheritance chain (class hierarchy)
 			console.log(
 				"Class inheritance chain:",
-				QueryError.followParentChain(error)?.map((e) => e.name).join(" > "),
+				QueryError.followParentChain(error)
+					?.map((e) => e.name)
+					.join(" > "),
 			);
 
 			// Get full context (from all levels of inheritance)
@@ -483,7 +487,7 @@ function example4_1() {
 		// Check if we have a NetworkError
 		const netError = new NetworkError({
 			message: "Network example",
-			cause: { host: "example.com" }
+			cause: { host: "example.com" },
 		});
 
 		if (checkInstance(netError, NetworkError)) {
@@ -560,7 +564,9 @@ function example5_1() {
 		// Use checkInstance for proper type inference with dynamically created errors
 		if (checkInstance(error, UserErrors.ValidationError)) {
 			console.log(`Validation error on field ${error.field}: ${error.value}`);
-			console.log(`Domain: ${error.domain}, Correlation ID: ${error.correlationId}`);
+			console.log(
+				`Domain: ${error.domain}, Correlation ID: ${error.correlationId}`,
+			);
 		}
 	}
 	console.log("\n");
@@ -610,7 +616,9 @@ function example5_2() {
 			console.log(error.toString());
 
 			// Direct access to properties with TypeScript support
-			console.log(`API error details: ${error.statusCode} on ${error.endpoint} at ${error.timestamp}`);
+			console.log(
+				`API error details: ${error.statusCode} on ${error.endpoint} at ${error.timestamp}`,
+			);
 
 			console.log("\n");
 		}
@@ -677,7 +685,8 @@ function example5_3() {
 			// Direct access to nested properties
 			const sslEnabled = error.config.server.ssl.enabled;
 			const hasCert = !!error.config.server.ssl.cert;
-			const credentialsEncrypted = error.config.database.connection.credentials.encrypted;
+			const credentialsEncrypted =
+				error.config.database.connection.credentials.encrypted;
 
 			console.log(`SSL Enabled: ${sslEnabled}, Has Cert: ${hasCert}`);
 			console.log(`Database Credentials Encrypted: ${credentialsEncrypted}`);
@@ -829,7 +838,9 @@ function example6_1() {
 
 		if (checkInstance(result1.error, CredentialsError)) {
 			// Direct property access with full TypeScript support
-			console.log(`Auth failed for user: ${result1.error.userId}, reason: ${result1.error.reason}`);
+			console.log(
+				`Auth failed for user: ${result1.error.userId}, reason: ${result1.error.reason}`,
+			);
 			console.log(`Attempt count: ${result1.error.attemptCount}`);
 		}
 	}
@@ -842,7 +853,9 @@ function example6_1() {
 
 		if (checkInstance(result2.error, MfaError)) {
 			// Direct property access
-			console.log(`MFA required: ${result2.error.mfaType}, remaining attempts: ${result2.error.remainingAttempts}`);
+			console.log(
+				`MFA required: ${result2.error.mfaType}, remaining attempts: ${result2.error.remainingAttempts}`,
+			);
 		}
 	}
 
@@ -854,8 +867,12 @@ function example6_1() {
 
 		if (checkInstance(result3.error, SessionError)) {
 			// Direct property access
-			console.log(`Session creation failed: ${result3.error.sessionId}, would expire at: ${result3.error.expiryTime}`);
-			console.log(`User ID: ${result3.error.userId}, Request ID: ${result3.error.requestId}`);
+			console.log(
+				`Session creation failed: ${result3.error.sessionId}, would expire at: ${result3.error.expiryTime}`,
+			);
+			console.log(
+				`User ID: ${result3.error.userId}, Request ID: ${result3.error.requestId}`,
+			);
 		}
 	}
 
@@ -885,14 +902,13 @@ function demonstrateDirectContextAccess() {
 	}>("ApiError", ["statusCode", "endpoint", "responseData"]);
 
 	// Create a derived error class
-	const NetworkError = createCustomError<{
-		retryCount: number;
-		timeout: number;
-	}, typeof ApiError>(
-		"NetworkError",
-		["retryCount", "timeout"],
-		ApiError
-	);
+	const NetworkError = createCustomError<
+		{
+			retryCount: number;
+			timeout: number;
+		},
+		typeof ApiError
+	>("NetworkError", ["retryCount", "timeout"], ApiError);
 	try {
 		// Create an error with context
 		const error = new NetworkError({
@@ -905,9 +921,9 @@ function demonstrateDirectContextAccess() {
 				// ApiError inherited context
 				statusCode: 503,
 				endpoint: "/api/users",
-				responseData: { error: "Service Unavailable" }
+				responseData: { error: "Service Unavailable" },
 			},
-			captureStack: true
+			captureStack: true,
 		});
 
 		throw error;
@@ -921,7 +937,6 @@ function demonstrateDirectContextAccess() {
 			console.log(`Endpoint: ${error.endpoint}`);
 			console.log(`Retry Count: ${error.retryCount}`);
 			console.log(`Timeout: ${error.timeout}`);
-
 
 			// Method 2: Using the static getContext method
 			console.log("\nUsing the static getContext method:");
@@ -951,14 +966,13 @@ function demonstrateJsonSerialization() {
 	}>("ApiError", ["statusCode", "endpoint", "responseData"]);
 
 	// Create a derived error class
-	const NetworkError = createCustomError<{
-		retryCount: number;
-		timeout: number;
-	}, typeof ApiError>(
-		"NetworkError",
-		["retryCount", "timeout"],
-		ApiError
-	);
+	const NetworkError = createCustomError<
+		{
+			retryCount: number;
+			timeout: number;
+		},
+		typeof ApiError
+	>("NetworkError", ["retryCount", "timeout"], ApiError);
 	try {
 		// Create a parent error
 		const parentError = new ApiError({
@@ -966,15 +980,15 @@ function demonstrateJsonSerialization() {
 			cause: {
 				statusCode: 400,
 				endpoint: "/api/auth",
-				responseData: { error: "Invalid credentials" }
-			}
+				responseData: { error: "Invalid credentials" },
+			},
 		});
 
 		// Create a child error with the parent
 		const childError = new NetworkError({
 			message: "Network operation failed",
 			cause: parentError,
-			captureStack: true
+			captureStack: true,
 		});
 
 		throw childError;
@@ -1012,23 +1026,21 @@ function demonstrateComplexExample() {
 		version: string;
 	}>("BaseError", ["application", "version"]);
 
-	const DatabaseError = createCustomError<{
-		database: string;
-		query: string;
-	}, typeof BaseError>(
-		"DatabaseError",
-		["database", "query"],
-		BaseError
-	);
+	const DatabaseError = createCustomError<
+		{
+			database: string;
+			query: string;
+		},
+		typeof BaseError
+	>("DatabaseError", ["database", "query"], BaseError);
 
-	const QueryError = createCustomError<{
-		errorCode: string;
-		affectedRows: number;
-	}, typeof DatabaseError>(
-		"QueryError",
-		["errorCode", "affectedRows"],
-		DatabaseError
-	);
+	const QueryError = createCustomError<
+		{
+			errorCode: string;
+			affectedRows: number;
+		},
+		typeof DatabaseError
+	>("QueryError", ["errorCode", "affectedRows"], DatabaseError);
 
 	try {
 		throw new QueryError({
@@ -1044,9 +1056,9 @@ function demonstrateComplexExample() {
 
 				// BaseError context
 				application: "CustomerManagement",
-				version: "1.0.0"
+				version: "1.0.0",
 			},
-			captureStack: true
+			captureStack: true,
 		});
 	} catch (error) {
 		// Use checkInstance for proper TypeScript type inference
@@ -1054,7 +1066,9 @@ function demonstrateComplexExample() {
 			console.log("Error:", error.name, "-", error.message);
 
 			// Directly access properties at different inheritance levels
-			console.log("\nAccessing context properties directly across inheritance:");
+			console.log(
+				"\nAccessing context properties directly across inheritance:",
+			);
 			console.log(`Error Code: ${error.errorCode}`);
 			console.log(`Database: ${error.database}`);
 			console.log(`Application: ${error.application}`);
@@ -1062,7 +1076,8 @@ function demonstrateComplexExample() {
 
 			// Using context getter
 			console.log("\nUsing context getter to access all properties:");
-			const { errorCode, database, application, version, query, affectedRows } = error;
+			const { errorCode, database, application, version, query, affectedRows } =
+				error;
 			console.log(`Error Code: ${errorCode}`);
 			console.log(`Database: ${database}`);
 			console.log(`Query: ${query}`);
@@ -1133,7 +1148,6 @@ export function runAllExamples() {
 	demonstrateDirectContextAccess();
 	demonstrateJsonSerialization();
 	demonstrateComplexExample();
-
-};
+}
 
 runAllExamples();
