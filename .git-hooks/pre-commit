@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -e
+
+# Run lint-staged to format and lint the staged files
+echo "⚠️ Running Linting and Formatting prior to committing..."
+pnpm lint-staged
+echo "🥳 Linting and Formatting completed successfully!"
