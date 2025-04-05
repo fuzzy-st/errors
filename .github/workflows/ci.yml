@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        
+    - name: Setup PNPM
+      uses: pnpm/action-setup@v2
+      with:
+        version: 10.7.1
+        
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+      
+    - name: Lint
+      run: pnpm exec biome check .
+      
+    - name: Type check
+      run: pnpm check
+
+    - name: Test
+      run: pnpm test
+    
+    - name: Build
+      run: pnpm build
+      
