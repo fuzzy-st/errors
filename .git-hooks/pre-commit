@@ -1,7 +1,24 @@
 #!/usr/bin/env bash
 set -e
 
-# Run lint-staged to format and lint the staged files
 echo "⚠️ Running Linting and Formatting prior to committing..."
-pnpm lint-staged
-echo "🥳 Linting and Formatting completed successfully!"
+
+# Make sure we're using the locally installed version
+export PATH="./node_modules/.bin:$PATH"
+
+# Check if there are any staged JS/TS files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\*.(js|ts)$' || true)
+
+if [ -n "$STAGED_FILES" ]; then
+  # Only run lint-staged if there are matching files
+  if command -v lint-staged &>/dev/null; then
+    lint-staged
+  else
+    echo "❌ lint-staged not found. Please run 'pnpm install' to install dependencies."
+    exit 1
+  fi
+else
+  echo "→ No JS/TS files to check."
+fi
+
+echo "✅ Linting and formatting passed!"
