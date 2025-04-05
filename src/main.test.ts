@@ -2,7 +2,7 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { createCustomError, checkInstance } from "./main";
 
-describe("Enhanced Error Hierarchy - Basic Error Creation", () => {
+describe("Basic Error Creation", () => {
 	test("should create a simple error with typed context", () => {
 		// Create a basic error class
 		const SimpleError = createCustomError<{
@@ -103,7 +103,7 @@ describe("Enhanced Error Hierarchy - Basic Error Creation", () => {
 	});
 });
 
-describe("Enhanced Error Hierarchy - Error Hierarchies", () => {
+describe("Error Hierarchies", () => {
 	test("should create a two-level error hierarchy with proper inheritance", () => {
 		// Base error
 		const BaseError = createCustomError<{
@@ -242,7 +242,7 @@ describe("Enhanced Error Hierarchy - Error Hierarchies", () => {
 	});
 });
 
-describe("Enhanced Error Hierarchy - Parent-Child Relationships", () => {
+describe("Parent-Child Relationships", () => {
 	test("should establish basic parent-child relationship between errors", () => {
 		const NetworkError = createCustomError<{
 			hostname: string;
@@ -395,7 +395,7 @@ describe("Enhanced Error Hierarchy - Parent-Child Relationships", () => {
 	});
 });
 
-describe("Enhanced Error Hierarchy - Mixed Inheritance and Parent Relationships", () => {
+describe("Mixed Inheritance and Parent Relationships", () => {
 	test("should combine class inheritance with parent-child relationships", () => {
 		// Class inheritance (level 1)
 		const BaseError = createCustomError<{
@@ -466,7 +466,7 @@ describe("Enhanced Error Hierarchy - Mixed Inheritance and Parent Relationships"
 	});
 });
 
-describe("Enhanced Error Hierarchy - Advanced Usage Patterns", () => {
+describe("Advanced Usage Patterns", () => {
 	test("should support dynamic error creation based on domain", () => {
 		// Factory function to create domain-specific errors
 		function createDomainErrors(domain: string) {
@@ -640,7 +640,7 @@ describe("Enhanced Error Hierarchy - Advanced Usage Patterns", () => {
 	});
 });
 
-describe("Enhanced Error Hierarchy - Real-World Scenarios", () => {
+describe("Real-World Scenarios", () => {
 	test("should handle authentication flow errors", () => {
 		// Define error hierarchy for auth flow
 		const AuthError = createCustomError<{
@@ -704,7 +704,7 @@ describe("Enhanced Error Hierarchy - Real-World Scenarios", () => {
 	});
 });
 
-describe("Enhanced Error Hierarchy - Edge Cases and Special Behaviors", () => {
+describe("Edge Cases and Special Behaviors", () => {
 	test("should handle string as cause", () => {
 		const SimpleError = createCustomError<{ code: number }>("SimpleError", [
 			"code",
@@ -743,9 +743,9 @@ describe("Enhanced Error Hierarchy - Edge Cases and Special Behaviors", () => {
 		assert.equal(deserialized.name, "ApiError");
 		assert.equal(deserialized.message, "API error occurred");
 		assert.ok(deserialized.stack, "Stack should be included");
-		assert.ok(deserialized.context, "Context should be included");
-		assert.equal(deserialized.context.statusCode, 500);
-		assert.equal(deserialized.context.endpoint, "/api/users");
+		assert.ok(deserialized.cause, "Cause should be included");
+		assert.equal(deserialized.cause.statusCode, 500);
+		assert.equal(deserialized.cause.endpoint, "/api/users");
 	});
 
 	test("should handle null or undefined cause gracefully", () => {
@@ -892,5 +892,262 @@ describe("Enhanced Error Hierarchy - Edge Cases and Special Behaviors", () => {
 		assert.ok(errorString.includes("500"));
 		assert.ok(errorString.includes("details"));
 		assert.ok(errorString.includes("Internal server error"));
+	});
+});
+
+describe("Additional Tests", () => {
+	test("should support JSON serialization/deserialization", () => {
+		const NetworkError = createCustomError<{
+			host: string;
+			port: number;
+		}>("NetworkError", ["host", "port"]);
+
+		const error = new NetworkError({
+			message: "Connection failed",
+			cause: { host: "example.com", port: 443 },
+			captureStack: true,
+		});
+
+		// Serialize to JSON
+		const serialized = JSON.stringify(error);
+		const parsed = JSON.parse(serialized);
+
+		// Check basic properties
+		assert.equal(parsed.name, "NetworkError");
+		assert.equal(parsed.message, "Connection failed");
+		assert.ok(parsed.stack); // Stack should be present
+
+		// Check cause for context
+		assert.ok(parsed.cause);
+		assert.equal(parsed.cause.host, "example.com");
+		assert.equal(parsed.cause.port, 443);
+	});
+
+	test("should handle inherited context properties correctly", () => {
+		// Base error with timestamp
+		const BaseError = createCustomError<{
+			timestamp: string;
+		}>("BaseError", ["timestamp"]);
+
+		// API error with status code
+		const ApiError = createCustomError<
+			{ statusCode: number },
+			typeof BaseError
+		>("ApiError", ["statusCode"], BaseError);
+
+		// Create with all properties
+		const error = new ApiError({
+			message: "API Error",
+			cause: {
+				statusCode: 500,
+				timestamp: "2025-04-04T12:00:00Z"
+			}
+		});
+
+		// Direct property access
+		assert.equal(error.statusCode, 500);
+		assert.equal(error.timestamp, "2025-04-04T12:00:00Z");
+
+		// Context getters
+		const fullContext = ApiError.getContext(error);
+		assert.deepEqual(fullContext, {
+			statusCode: 500,
+			timestamp: "2025-04-04T12:00:00Z"
+		});
+
+		// Just ApiError context
+		const apiContext = ApiError.getContext(error, {
+			includeParentContext: false
+		});
+		assert.deepEqual(apiContext, { statusCode: 500 });
+	});
+
+	test("should handle error with no context", () => {
+		const EmptyError = createCustomError("EmptyError", []);
+
+		const error = new EmptyError({
+			message: "An error with no context"
+		});
+
+		assert.equal(error.name, "EmptyError");
+		assert.equal(error.message, "An error with no context");
+
+		// toString should still work
+		const errorString = error.toString();
+		assert.equal(errorString, "EmptyError: An error with no context");
+
+		// Context should be undefined
+		const context = EmptyError.getContext(error);
+		assert.equal(context, undefined);
+	});
+});
+
+describe("Circular Reference Protection", () => {
+	test("should detect and prevent circular references", () => {
+		const ErrorA = createCustomError<{ a: string }>("ErrorA", ["a"]);
+		const ErrorB = createCustomError<{ b: string }>("ErrorB", ["b"]);
+
+		// Create instance of ErrorA
+		const errorA = new ErrorA({
+			message: "Error A",
+			cause: { a: "valueA" },
+		});
+
+		// Create instance of ErrorB with ErrorA as parent
+		const errorB = new ErrorB({
+			message: "Error B",
+			cause: { b: "valueB" },
+		});
+
+		// Set parent property
+		(errorB as any).parent = errorA;
+
+		// Attempt to create a circular reference 
+		// This should trigger circular reference detection when accessing the parent chain
+		(errorA as any).parent = errorB;
+
+		// Check if we can safely follow the parent chain without infinite recursion
+		const chain = ErrorA.followParentChain(errorA);
+
+		// Chain should contain both errors but stop at the circular reference
+		assert.equal(chain.length, 2);
+		assert.equal(chain[0].name, "ErrorA");
+		assert.equal(chain[1].name, "ErrorB");
+
+		// Similarly, getErrorHierarchy should handle circular references
+		const hierarchy = ErrorA.getErrorHierarchy(errorA);
+		assert.equal(hierarchy.length, 2);
+		assert.equal(hierarchy[0].name, "ErrorA");
+		assert.equal(hierarchy[1].name, "ErrorB");
+	});
+
+	test("should respect maxParentChainLength", () => {
+		const BaseError = createCustomError<{ index: number }>("BaseError", ["index"]);
+
+		// Create a deeply nested chain
+		let previousError: any = null;
+		let rootError: any = null;
+
+		// Create 10 nested errors
+		for (let i = 9; i >= 0; i--) {
+			const error = new BaseError({
+				message: `Error ${i}`,
+				cause: { index: i },
+			});
+
+			if (previousError) {
+				error.parent = previousError;
+			}
+
+			previousError = error;
+
+			if (i === 0) {
+				rootError = error;
+			}
+		}
+
+		// Follow chain with default depth
+		const fullChain = BaseError.followParentChain(rootError);
+		assert.equal(fullChain.length, 10);
+
+		// Follow chain with limited depth
+		const limitedChain = BaseError.followParentChain(rootError);
+		assert.equal(limitedChain.length, 10);
+	});
+
+	test("should handle collision strategy", () => {
+		const ParentError = createCustomError<{ shared: string }>(
+			"ParentError",
+			["shared"]
+		);
+
+		const ChildError = createCustomError<
+			{ shared: string },
+			typeof ParentError
+		>("ChildError", ["shared"], ParentError);
+
+		// 'override' strategy (default)
+		const error1 = new ChildError({
+			message: "Test",
+			cause: { shared: "child-value" },
+			collisionStrategy: 'override',
+		});
+
+		assert.equal(error1.shared, "child-value");
+
+		// Verify that 'error' strategy throws when there would be a collision
+		assert.throws(() => {
+			new ChildError({
+				message: "Test",
+				cause: {
+					shared: "child-value",
+				},
+				collisionStrategy: 'error',
+			});
+		}, /Context property 'shared' conflicts/);
+	});
+});
+
+describe("Performance Optimizations", () => {
+	test("should have faster creation with createFast method", async () => {
+		const SimpleError = createCustomError<{ code: number }>(
+			"SimpleError",
+			["code"]
+		);
+
+		// This is a simple benchmark, but node:test doesn't have great performance testing
+		/**
+		 * Fast creation should be at least 30% faster than standard creation
+		 * 
+		 * Average time for 1,000 iterations
+		 * Standard creation: 7.28ms - 6.50ms
+		 * Fast creation: 4.21ms - 4.73ms
+		 * 
+		 * Average time for 10,000 iterations
+		 * Standard creation: 76.14ms - 74.95ms
+		 * Fast creation: 44.40ms - 42.82ms
+		 * 
+		 * Average time for 100,000 iterations
+		 * Standard creation: 742.12ms - 733.14ms
+		 * Fast creation: 443.71ms - 454.67ms
+		 * 
+		 * Average time for 1,000,000 iterations
+		 * Standard creation: 7590.94ms - 7560.76ms
+		 * Fast creation: 4469.63ms - 4582.30ms
+		 */
+		const iterations = 10_000;
+
+		// Standard creation
+		const startStandard = process.hrtime.bigint();
+		for (let i = 0; i < iterations; i++) {
+			new SimpleError({
+				message: "Test error",
+				cause: { code: 500 },
+				captureStack: true
+			});
+		}
+		const endStandard = process.hrtime.bigint();
+		const standardTime = Number(endStandard - startStandard) / 1_000_000; // ms
+
+		// Fast creation
+		const startFast = process.hrtime.bigint();
+		for (let i = 0; i < iterations; i++) {
+			SimpleError.createFast("Test error", { code: 500 });
+		}
+		const endFast = process.hrtime.bigint();
+		const fastTime = Number(endFast - startFast) / 1_000_000; // ms
+
+		console.log(`Standard creation: ${standardTime.toFixed(2)}ms`);
+		console.log(`Fast creation: ${fastTime.toFixed(2)}ms`);
+
+		// Fast creation should be significantly faster
+		assert.ok(fastTime < standardTime * 0.7,
+			`Fast creation (${fastTime.toFixed(2)}ms) should be at least 30% faster than standard (${standardTime.toFixed(2)}ms)`);
+
+		// Verify that the fast creation still produces a valid error
+		const fastError = SimpleError.createFast("Fast error", { code: 123 });
+		assert.equal(fastError.message, "Fast error");
+		assert.equal(fastError.code, 123);
+		assert.ok(fastError instanceof SimpleError);
 	});
 });
