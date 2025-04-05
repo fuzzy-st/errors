@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -e
+
+# Install commitlint if not installed
+if ! command -v commitlint &> /dev/null; then
+  echo "Installing commitlint..."
+  pnpm add -D @commitlint/cli @commitlint/config-conventional
+fi
+
+# Run commitlint on the commit message
+echo "⚠️ Running Commitlint to validate commit message..."
+pnpm exec commitlint --edit $1
+if [ $? -ne 0 ]; then
+  echo "❌ Commit message validation failed. Please follow the commit message guidelines."
+  exit 1
+fi
+echo "🥳 Commit message validation passed!"
