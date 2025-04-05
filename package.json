@@ -27,11 +27,21 @@
     "test:watch": "node --import tsx --test-reporter=spec  --test --watch \"src/**/*.test.ts\" \"tests/**/*.test.ts\"",
     "check": "tsc --noEmit",
     "lint": "biome lint --fix",
-    "format": "biome format --fix"
+    "format": "biome format --fix",
+    "setup-hooks": "node setup-git-hooks.js",
+    "postinstall": "node -e \"try { require('./setup-git-hooks.js') } catch(e) { console.log('Git hooks setup skipped.') }\"",
+    "release": "standard-version",
+    "release:minor": "standard-version --release-as minor",
+    "release:patch": "standard-version --release-as patch",
+    "release:major": "standard-version --release-as major"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@commitlint/cli": "^19.8.0",
+    "@commitlint/config-conventional": "^19.8.0",
     "@types/node": "^22.14.0",
+    "lint-staged": "^15.5.0",
+    "standard-version": "^9.5.0",
     "tsup": "^8.4.0",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2"
