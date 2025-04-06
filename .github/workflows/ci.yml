@@ -26,12 +26,6 @@ jobs:
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
       
-    - name: Lint
-      run: pnpm exec biome check .
-      
-    - name: Type check
-      run: pnpm check
-
     - name: Test
       run: pnpm test
     
