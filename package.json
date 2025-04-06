@@ -33,7 +33,8 @@
     "release": "standard-version",
     "release:minor": "standard-version --release-as minor",
     "release:patch": "standard-version --release-as patch",
-    "release:major": "standard-version --release-as major"
+    "release:major": "standard-version --release-as major",
+    "cut-release": "git push --follow-tags origin main"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
