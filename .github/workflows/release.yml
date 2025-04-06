@@ -56,7 +56,7 @@ jobs:
         output-file: 'CHANGELOG.md'
         
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2.2.1
       if: ${{ steps.changelog.outputs.skipped == 'false' }}
       with:
         body: ${{ steps.changelog.outputs.clean_changelog }}
