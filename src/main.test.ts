@@ -266,7 +266,7 @@ describe("Parent-Child Relationships", () => {
 		// Create child error with parent
 		const svcError = new ServiceError({
 			message: "Authentication service unavailable",
-			cause: netError, // Pass the error as cause to establish parent relationship
+			parent: netError, // Pass the error as cause to establish parent relationship
 		});
 
 		// Check properties
@@ -312,13 +312,13 @@ describe("Parent-Child Relationships", () => {
 		// Level 2
 		const fileError = new FileError({
 			message: "Could not read configuration file",
-			cause: sysError, // Parent relationship
+			parent: sysError, // Parent relationship
 		});
 
 		// Level 1 (what application code catches)
 		const confError = new ConfigError({
 			message: "Application configuration invalid",
-			cause: fileError, // Parent relationship
+			parent: fileError, // Parent relationship
 		});
 
 		// Check parent chains
@@ -761,9 +761,9 @@ describe("Edge Cases and Special Behaviors", () => {
 		assert.equal(error1.message, "Test error");
 		assert.equal(error1.parent, undefined);
 
-		// @ts-ignore - Deliberately passing null to test error handling
 		const error2 = new SimpleError({
 			message: "Test error",
+			// @ts-ignore - Deliberately passing null to test error handling
 			cause: null,
 		});
 
@@ -867,7 +867,7 @@ describe("Edge Cases and Special Behaviors", () => {
 
 		// Check inheritance chain
 		assert.deepEqual(
-			error.inheritanceChain.map((e) => e.name),
+			error?.inheritanceChain?.map((e) => e.name),
 			["Level1Error", "Level2Error", "Level3Error"],
 		);
 	});
