@@ -58,13 +58,17 @@ type ErrorOptions<
   ParentError extends CustomErrorClass<any> | undefined = undefined,
 > = {
   message: string;
-  cause?: OwnContext | Error | string;
   captureStack?: boolean;
-  inherits?: ParentError;
+  overridePrototype?: ParentError;
   enumerableProperties?: boolean | string[];
   collisionStrategy?: CollisionStrategy;
   maxParentChainLength?: number;
-};
+  parent?: Error;
+} & (
+    | { cause: OwnContext }                 // Context object
+    | { cause: string }                     // Cause message
+    | { cause?: undefined }                 // No cause
+  );
 
 /**
  * Represents a custom error class with enhanced features
@@ -75,7 +79,7 @@ type CustomErrorClass<T> = {
   ): Error &
     T & {
       inheritanceChain?: CustomErrorClass<any>[];
-      parent?: Error;
+      parent?: Error & Partial<T>; // Parent error with potential context
       context: T; // Expose context directly on the error
       toJSON(): any; // Add toJSON method
     };
@@ -243,37 +247,103 @@ export function createCustomError<
           message,
           cause,
           captureStack,
-          inherits,
+          parent,
+          overridePrototype,
           enumerableProperties,
           collisionStrategy,
           maxParentChainLength
         } = finalOptions;
 
         // Determine which parent to use
-        const effectiveParent = inherits || parentError;
+        const effectiveParent = overridePrototype || parentError;
         let mergedContext: Record<string, unknown> = {};
         let parentInstance: Error | undefined;
 
-        // Handle various cause types
-        if (cause) {
-          if (cause instanceof Error) {
-            // If cause is an error, use it as the parent
-            parentInstance = cause;
+        // Handle parent error if provided
+        if (parent) {
+          parentInstance = parent;
 
-            // Extract context from error if available
-            const causeContext = errorContexts.get(cause);
-            if (causeContext) {
-              mergedContext = { ...causeContext };
-            }
-          } else if (typeof cause === "string") {
+          // Extract context from parent if available
+          const parentContext = errorContexts.get(parent);
+          if (parentContext) {
+            mergedContext = { ...parentContext };
+          }
+        }
+        // Handle various cause types
+        // if (cause) {
+        //   if (cause instanceof Error) {
+        //     // If cause is an error, use it as the parent
+        //     parentInstance = cause;
+
+        //     // Extract context from error if available
+        //     const causeContext = errorContexts.get(cause);
+        //     if (causeContext) {
+        //       mergedContext = { ...causeContext };
+        //     }
+        //   } else if (typeof cause === "string") {
+        //     // If cause is a string, create a base error
+        //     parentInstance = new Error(cause);
+        //   } else if (typeof cause === "object") {
+        //     // If cause is an object, use it as context
+        //     mergedContext = { ...cause };
+
+        //     // Create parent errors to maintain the error chain
+        //     if (effectiveParent &&
+        //       effectiveParent !== (Error as unknown as CustomErrorClass<any>) &&
+        //       typeof effectiveParent.getInstances === 'function') {
+        //       try {
+        //         // Create a parent error instance
+        //         const parentKeys =
+        //           errorClassKeys.get(effectiveParent.name) || [];
+        //         const parentContext: Record<string, unknown> = {};
+
+        //         // Extract only the keys relevant to the parent
+        //         for (const key of parentKeys) {
+        //           if (key in mergedContext) {
+        //             parentContext[key as string] = mergedContext[key as string];
+        //           }
+        //         }
+
+        //         // Add keys from any ancestor classes
+        //         const ancestorClasses = effectiveParent.getInstances();
+        //         for (const ancestorClass of ancestorClasses) {
+        //           const ancestorKeys =
+        //             errorClassKeys.get(ancestorClass.name) || [];
+        //           for (const key of ancestorKeys) {
+        //             if (key in mergedContext && !(key in parentContext)) {
+        //               parentContext[key as string] =
+        //                 mergedContext[key as string];
+        //             }
+        //           }
+        //         }
+
+        //         parentInstance = new effectiveParent({
+        //           message: message || `${effectiveParent.name} Error`,
+        //           cause: parentContext,
+        //           captureStack, // Pass captureStack to parent
+        //           collisionStrategy,
+        //         });
+        //       } catch (e) {
+        //         console.warn(
+        //           `Failed to create ${effectiveParent?.name} instance:`,
+        //           e,
+        //         );
+        //       }
+        //     }
+        //   }
+        // }
+        if (cause) {
+          if (typeof cause === "string") {
             // If cause is a string, create a base error
-            parentInstance = new Error(cause);
+            if (!parentInstance) {
+              parentInstance = new Error(cause);
+            }
           } else if (typeof cause === "object") {
             // If cause is an object, use it as context
             mergedContext = { ...cause };
 
             // Create parent errors to maintain the error chain
-            if (effectiveParent &&
+            if (!parentInstance && effectiveParent &&
               effectiveParent !== (Error as unknown as CustomErrorClass<any>) &&
               typeof effectiveParent.getInstances === 'function') {
               try {
@@ -317,6 +387,7 @@ export function createCustomError<
             }
           }
         }
+
 
         // Set name properties
         Object.defineProperty(this, "name", {
