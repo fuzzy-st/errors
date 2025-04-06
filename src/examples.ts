@@ -129,13 +129,13 @@ function example2_1() {
 		throw new DataError({
 			message: "Failed to process data",
 			cause: {
-				// DataError context
-				dataSource: "user_database",
-				dataType: "user_profile",
+				// DataError specific context
+				dataSource: "database",
+				dataType: "user",
 
 				// BaseError context
 				timestamp: new Date().toISOString(),
-				severity: "medium",
+				severity: "high",
 			},
 		});
 	} catch (error) {
@@ -276,7 +276,7 @@ function example3_1() {
 				// This is the child error (caused by the network error)
 				throw new ServiceError({
 					message: "Authentication service unavailable",
-					cause: networkError, // Pass the error as cause to establish parent relationship
+					parent: networkError, // Pass the error in establish parent relationship
 					captureStack: true,
 				});
 			}
@@ -340,7 +340,7 @@ function example3_2() {
 					// Level 2
 					throw new FileError({
 						message: "Could not read configuration file",
-						cause: systemError, // Parent relationship
+						parent: systemError, // Parent relationship
 						captureStack: true,
 					});
 				}
@@ -354,8 +354,8 @@ function example3_2() {
 					cause: {
 						configKey: "AK47",
 						expectedType: "string",
-						...fileError, // Parent relationship
-					},
+					}, // Custom context
+					parent: fileError, // Parent relationship
 					captureStack: true,
 				});
 			}
@@ -381,6 +381,7 @@ function example3_2() {
 		}
 
 		// Follow complete error chain
+		//@ts-expect-error - Trust me its a CustomError
 		const errorChain = ConfigError.followParentChain(error);
 		console.log(`Complete error chain (${errorChain.length} errors):`);
 
@@ -457,7 +458,7 @@ function example4_1() {
 				// BaseError context
 				application: "UserService",
 			},
-			inherits: DatabaseError, // Explicit class inheritance
+			overridePrototype: DatabaseError, // Explicit class inheritance
 			captureStack: true,
 		});
 	} catch (error) {
@@ -987,7 +988,7 @@ function demonstrateJsonSerialization() {
 		// Create a child error with the parent
 		const childError = new NetworkError({
 			message: "Network operation failed",
-			cause: parentError,
+			parent: parentError,
 			captureStack: true,
 		});
 
