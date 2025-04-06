@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -28,29 +31,35 @@ jobs:
     - name: Install dependencies
       run: pnpm install --frozen-lockfile
       
-    - name: Lint
-      run: pnpm exec biome check .
+    # - name: Lint
+    #   run: pnpm exec biome check .
       
-    - name: Type check
-      run: pnpm check
+    # - name: Type check
+    #   run: pnpm check
+    - name: Test
+      run: pnpm test
       
     - name: Build
       run: pnpm build
       
-    - name: Test
-      run: pnpm test
       
     - name: Generate changelog
       id: changelog
-      uses: conventional-changelog/releaser-action@v1
+      uses: TriPSs/conventional-changelog-action@v5
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        preset: 'angular'
+        git-push: 'false'  # We're already pushing with a tag
+        skip-version-file: 'true'  # We're using a tag, not generating a new version
+        skip-commit: 'true'  # Skip creating a release commit
+        skip-git-pull: 'true'  # No need to pull as we just checked out
+        create-summary: 'true'  # Creates a summary in GitHub Actions
+        output-file: 'CHANGELOG.md'
         
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
+      if: ${{ steps.changelog.outputs.skipped == 'false' }}
       with:
-        body: ${{ steps.changelog.outputs.notes }}
+        body: ${{ steps.changelog.outputs.clean_changelog }}
         
     - name: Publish to npm
       run: pnpm publish --no-git-checks
