@@ -7,14 +7,21 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"ignore": ["node_modules", "dist", "coverage"],
-		"include": ["src"]
+		"ignore": [
+			"node_modules",
+			"dist",
+			"coverage"
+		],
+		"include": [
+			"src"
+		]
 	},
 	"formatter": {
 		"enabled": true,
-		"indentStyle": "tab",
+		"indentStyle": "space",
 		"indentWidth": 2,
-		"formatWithErrors": true
+		"formatWithErrors": true,
+		"lineWidth": 100
 	},
 	"organizeImports": {
 		"enabled": true
@@ -24,10 +31,10 @@
 		"rules": {
 			"recommended": true,
 			"suspicious": {
-				"noExplicitAny": "info"
+				"noExplicitAny": "off"
 			},
 			"complexity": {
-				"noBannedTypes": "info"
+				"noBannedTypes": "off"
 			}
 		}
 	},
