@@ -1,8 +1,8 @@
 /**
  * # CustomError
- * 
+ *
  * A TypeScript library for creating custom error classes with enhanced features such as:
- * 
+ *
  * Features:
  * - Generate Custom error classes
  * - Simplified API for creating custom errors
@@ -15,12 +15,12 @@
  * - Property enumeration control
  * - Collision strategy for context properties
  * - Fast error creation for high-performance scenarios
- * 
+ *
  * ## Usage
- * 
+ *
  * ```ts
  * import { createCustomError, checkInstance } from '@fuzzy-street/errors';
- * 
+ *
  * // Create a custom error class
  * const ApiError = createCustomError<{
  *  statusCode: number;
@@ -30,33 +30,28 @@
  * ["statusCode", "endpoint"]
  * );
  * ```
- * 
+ *
  * @see {@link createCustomError}
  * @see {@link checkInstance}
  * @author aFuzzyBear
  * @license MIT
- * 
+ *
  */
 
 /**
  * Type for extracting context from a CustomErrorClass
  */
-type ErrorContext<T> = T extends CustomErrorClass<infer Context>
-  ? Context
-  : Record<string, never>;
+type ErrorContext<T> = T extends CustomErrorClass<infer Context> ? Context : Record<string, never>;
 
 /**
  * Collision strategy for handling context property name collisions
  */
-type CollisionStrategy = 'override' | 'preserve' | 'error';
+type CollisionStrategy = "override" | "preserve" | "error";
 
 /**
  * Options for creating or configuring an error instance
  */
-type ErrorOptions<
-  OwnContext,
-  ParentError extends CustomErrorClass<any> | undefined = undefined,
-> = {
+type ErrorOptions<OwnContext, ParentError extends CustomErrorClass<any> | undefined = undefined> = {
   message: string;
   captureStack?: boolean;
   overridePrototype?: ParentError;
@@ -65,16 +60,16 @@ type ErrorOptions<
   maxParentChainLength?: number;
   parent?: Error;
 } & (
-    | { cause: OwnContext }                 // Context object
-    | { cause: string }                     // Cause message
-    | { cause?: undefined }                 // No cause
-  );
+  | { cause: OwnContext } // Context object
+  | { cause: string } // Cause message
+  | { cause?: undefined } // No cause
+);
 
 /**
  * Represents a custom error class with enhanced features
  */
 type CustomErrorClass<T> = {
-  new(
+  new (
     options: ErrorOptions<T, any>,
   ): Error &
     T & {
@@ -89,10 +84,7 @@ type CustomErrorClass<T> = {
    * @param error The error to get context from
    * @param options Options for context retrieval
    */
-  getContext(
-    error: unknown,
-    options?: { includeParentContext?: boolean },
-  ): T | undefined;
+  getContext(error: unknown, options?: { includeParentContext?: boolean }): T | undefined;
 
   /**
    * Get full error hierarchy with contexts
@@ -146,25 +138,24 @@ const errorClassKeys = new Map<string, string[]>();
 // Global registry to track all created custom error classes
 const customErrorRegistry = new Map<string, CustomErrorClass<any>>();
 
-
 /**
  * Default options for error creation
  */
 const DEFAULT_OPTIONS = {
   captureStack: true,
   enumerableProperties: false,
-  collisionStrategy: 'override' as CollisionStrategy,
+  collisionStrategy: "override" as CollisionStrategy,
   maxParentChainLength: 100,
 };
 
 /**
  * Type-safe instance checker for custom errors
  * This function provides proper TypeScript type inference when checking error instances
- * 
+ *
  * @param error The error to check
  * @param instance The custom error class to check against
  * @returns Type guard assertion that the error is of type Error & T
- * 
+ *
  * @example
  * if (checkInstance(error, ApiError)) {
  *   // TypeScript now knows these properties exist
@@ -172,24 +163,27 @@ const DEFAULT_OPTIONS = {
  *   console.log(error.endpoint);
  * }
  */
-export function checkInstance<T>(error: unknown, instance: CustomErrorClass<T>): error is (Error & T) {
+export function checkInstance<T>(
+  error: unknown,
+  instance: CustomErrorClass<T>,
+): error is Error & T {
   return error instanceof instance;
 }
 
 /**
  * Creates a custom error class with enhanced hierarchical error tracking
- * 
+ *
  * @param name Name of the error class
  * @param contextKeys Array of context property keys
  * @param parentError Optional parent error class to inherit from
  * @returns A new custom error class with typed context
- * 
+ *
  * @example
  * const ApiError = createCustomError<{
  *   statusCode: number;
  *   endpoint: string;
  * }>("ApiError", ["statusCode", "endpoint"]);
- * 
+ *
  * const error = new ApiError({
  *   message: "API request failed",
  *   cause: { statusCode: 404, endpoint: "/api/users" }
@@ -203,8 +197,7 @@ export function createCustomError<
   contextKeys: (keyof OwnContext)[],
   parentError?: ParentError,
 ): CustomErrorClass<
-  OwnContext &
-  (ParentError extends CustomErrorClass<any> ? ErrorContext<ParentError> : {})
+  OwnContext & (ParentError extends CustomErrorClass<any> ? ErrorContext<ParentError> : {})
 > {
   // Determine the parent error class
   const ParentErrorClass = parentError ?? Error;
@@ -219,7 +212,6 @@ export function createCustomError<
     message!: string;
     stack: any;
     _contextCached?: boolean;
-
 
     constructor(options: ErrorOptions<OwnContext, ParentError>) {
       // Apply default options
@@ -251,7 +243,7 @@ export function createCustomError<
           overridePrototype,
           enumerableProperties,
           collisionStrategy,
-          maxParentChainLength
+          maxParentChainLength,
         } = finalOptions;
 
         // Determine which parent to use
@@ -343,13 +335,15 @@ export function createCustomError<
             mergedContext = { ...cause };
 
             // Create parent errors to maintain the error chain
-            if (!parentInstance && effectiveParent &&
+            if (
+              !parentInstance &&
+              effectiveParent &&
               effectiveParent !== (Error as unknown as CustomErrorClass<any>) &&
-              typeof effectiveParent.getInstances === 'function') {
+              typeof effectiveParent.getInstances === "function"
+            ) {
               try {
                 // Create a parent error instance
-                const parentKeys =
-                  errorClassKeys.get(effectiveParent.name) || [];
+                const parentKeys = errorClassKeys.get(effectiveParent.name) || [];
                 const parentContext: Record<string, unknown> = {};
 
                 // Extract only the keys relevant to the parent
@@ -362,12 +356,10 @@ export function createCustomError<
                 // Add keys from any ancestor classes
                 const ancestorClasses = effectiveParent.getInstances();
                 for (const ancestorClass of ancestorClasses) {
-                  const ancestorKeys =
-                    errorClassKeys.get(ancestorClass.name) || [];
+                  const ancestorKeys = errorClassKeys.get(ancestorClass.name) || [];
                   for (const key of ancestorKeys) {
                     if (key in mergedContext && !(key in parentContext)) {
-                      parentContext[key as string] =
-                        mergedContext[key as string];
+                      parentContext[key as string] = mergedContext[key as string];
                     }
                   }
                 }
@@ -379,15 +371,11 @@ export function createCustomError<
                   collisionStrategy,
                 });
               } catch (e) {
-                console.warn(
-                  `Failed to create ${effectiveParent?.name} instance:`,
-                  e,
-                );
+                console.warn(`Failed to create ${effectiveParent?.name} instance:`, e);
               }
             }
           }
         }
-
 
         // Set name properties
         Object.defineProperty(this, "name", {
@@ -414,13 +402,13 @@ export function createCustomError<
         // Build inheritance chain based on effective parent
         this.inheritanceChain =
           effectiveParent &&
-            effectiveParent !== (Error as unknown as CustomErrorClass<any>) &&
-            typeof effectiveParent.getInstances === 'function'
+          effectiveParent !== (Error as unknown as CustomErrorClass<any>) &&
+          typeof effectiveParent.getInstances === "function"
             ? [...(effectiveParent.getInstances?.() || []), effectiveParent]
             : [];
 
         // Handle context collisions
-        if (collisionStrategy === 'error') {
+        if (collisionStrategy === "error") {
           this.checkContextCollisions(mergedContext);
         }
 
@@ -433,7 +421,7 @@ export function createCustomError<
         }
 
         // Handle stack trace
-        if (captureStack && typeof Error?.captureStackTrace === 'function') {
+        if (captureStack && typeof Error?.captureStackTrace === "function") {
           Error.captureStackTrace(this, CustomError);
         } else if (captureStack) {
           // Fallback for environments without captureStackTrace
@@ -447,10 +435,10 @@ export function createCustomError<
 
         // Store the maxParentChainLength in the error instance for later use
         if (maxParentChainLength) {
-          Object.defineProperty(this, 'maxParentChainLength', {
+          Object.defineProperty(this, "maxParentChainLength", {
             value: maxParentChainLength,
             enumerable: false,
-            configurable: true
+            configurable: true,
           });
         }
       }
@@ -498,15 +486,13 @@ export function createCustomError<
       for (const key in context) {
         if (parentKeys.includes(key)) {
           throw new Error(
-            `Context property '${key}' conflicts with an existing property in parent context`
+            `Context property '${key}' conflicts with an existing property in parent context`,
           );
         }
 
         // Also check for collisions with standard Error properties
-        if (['name', 'message', 'stack', 'toString', 'constructor'].includes(key)) {
-          throw new Error(
-            `Context property '${key}' conflicts with a standard Error property`
-          );
+        if (["name", "message", "stack", "toString", "constructor"].includes(key)) {
+          throw new Error(`Context property '${key}' conflicts with a standard Error property`);
         }
       }
     }
@@ -516,15 +502,13 @@ export function createCustomError<
      */
     private makePropertiesEnumerable(enumerableProps: boolean | string[]): void {
       const propsToMakeEnumerable =
-        typeof enumerableProps === 'boolean'
-          ? ['name', 'message', 'stack']
-          : enumerableProps;
+        typeof enumerableProps === "boolean" ? ["name", "message", "stack"] : enumerableProps;
 
       for (const prop of propsToMakeEnumerable) {
         if (Object.prototype.hasOwnProperty.call(this, prop)) {
           Object.defineProperty(this, prop, {
             enumerable: true,
-            configurable: true
+            configurable: true,
           });
         }
       }
@@ -542,9 +526,7 @@ export function createCustomError<
         this.inheritanceChain && this.inheritanceChain.length > 0
           ? `\nInheritance Chain: ${this.inheritanceChain.map((e) => e.name).join(" > ")}`
           : "";
-      const parentInfo = this.parent
-        ? `\nParent: ${this.parent.name}: ${this.parent.message}`
-        : "";
+      const parentInfo = this.parent ? `\nParent: ${this.parent.name}: ${this.parent.message}` : "";
 
       return context
         ? `${baseString}\nCause: ${JSON.stringify(context, null, 2)}${inheritanceInfo}${parentInfo}`
@@ -589,7 +571,7 @@ export function createCustomError<
 
       // Add inheritance chain if available
       if (this.inheritanceChain && this.inheritanceChain.length > 0) {
-        result.inheritanceChain = this.inheritanceChain.map(e => e.name);
+        result.inheritanceChain = this.inheritanceChain.map((e) => e.name);
       }
 
       return result;
@@ -610,9 +592,7 @@ export function createCustomError<
         options?: { includeParentContext?: boolean },
       ):
         | (OwnContext &
-          (ParentError extends CustomErrorClass<any>
-            ? ErrorContext<ParentError>
-            : {}))
+            (ParentError extends CustomErrorClass<any> ? ErrorContext<ParentError> : {}))
         | undefined => {
         if (!(error instanceof Error)) return undefined;
 
@@ -652,15 +632,15 @@ export function createCustomError<
         const seen = new WeakSet<Error>();
         let currentError:
           | (Error & {
-            inheritanceChain?: CustomErrorClass<any>[];
-            parent?: Error;
-          })
+              inheritanceChain?: CustomErrorClass<any>[];
+              parent?: Error;
+            })
           | undefined = error;
 
         while (currentError) {
           // Check for circular references
           if (seen.has(currentError)) {
-            console.warn('Circular reference detected in error hierarchy');
+            console.warn("Circular reference detected in error hierarchy");
             break;
           }
           seen.add(currentError);
@@ -684,9 +664,9 @@ export function createCustomError<
           // Move to the next error in the chain
           currentError = currentError.parent as
             | (Error & {
-              inheritanceChain?: CustomErrorClass<any>[];
-              parent?: Error;
-            })
+                inheritanceChain?: CustomErrorClass<any>[];
+                parent?: Error;
+              })
             | undefined;
         }
 
@@ -708,7 +688,7 @@ export function createCustomError<
 
         while (current && depth < maxDepth) {
           if (seen.has(current)) {
-            console.warn('Circular reference detected in error chain');
+            console.warn("Circular reference detected in error chain");
             break;
           }
           seen.add(current);
@@ -738,9 +718,8 @@ export function createCustomError<
         }
 
         // If parent exists, get its instances and add parent
-        const parentChain = typeof parentError.getInstances === 'function'
-          ? parentError.getInstances?.() || []
-          : [];
+        const parentChain =
+          typeof parentError.getInstances === "function" ? parentError.getInstances?.() || [] : [];
         return [...parentChain, parentError];
       },
       enumerable: false,
@@ -758,7 +737,7 @@ export function createCustomError<
           cause: context || {},
           captureStack: false,
           enumerableProperties: false,
-          collisionStrategy: 'override',
+          collisionStrategy: "override",
         });
         if (context) {
           Object.assign(error, context);
@@ -769,26 +748,23 @@ export function createCustomError<
       },
       enumerable: false,
       configurable: true,
-    }
+    },
   });
 
   // Store the custom error class in registry with proper name
   customErrorRegistry.set(name, CustomError as any);
 
   return CustomError as unknown as CustomErrorClass<
-    OwnContext &
-    (ParentError extends CustomErrorClass<any>
-      ? ErrorContext<ParentError>
-      : {})
+    OwnContext & (ParentError extends CustomErrorClass<any> ? ErrorContext<ParentError> : {})
   >;
 }
 
 /**
  * Get a registered error class by name
- * 
+ *
  * @param name The name of the error class to retrieve
  * @returns The custom error class or undefined if not found
- * 
+ *
  * @example
  * ```ts
  * const ApiError = getErrorClass("ApiError");
@@ -807,15 +783,15 @@ export function getErrorClass(name: string): CustomErrorClass<any> | undefined {
 
 /**
  * List all registered error class names
- * 
+ *
  * @returns An array of registered error class names
- * 
+ *
  * @example
  * ```ts
  * const errorClasses = listErrorClasses();
  * console.log("Registered error classes:", errorClasses);
  * ```
- * 
+ *
  */
 export function listErrorClasses(): string[] {
   return Array.from(customErrorRegistry.keys());
@@ -823,7 +799,7 @@ export function listErrorClasses(): string[] {
 
 /**
  * Clear all registered error classes (useful for testing)
- * 
+ *
  * @example
  * ```ts
  * clearErrorRegistry();
