@@ -552,7 +552,7 @@ console.log(`Hierarchy items: ${hierarchy.length}`); // Also stops at circular r
 
 ## 🧪 Running the Examples
 
-We have code that includes comprehensive examples that demonstrate the full range of capabilities for this wee this library. Clone the repo, run them locally to see the error hierarchies in action:
+We have code that includes comprehensive [examples](src/examples.ts) that demonstrate the full range of capabilities for this wee this library. Clone the repo, run them locally to see the error hierarchies in action:
 
 ```bash
 # From the root of the project
