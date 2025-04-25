@@ -1,6 +1,6 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { createCustomError, checkInstance } from "./main";
+import { createCustomError, isError } from "./main";
 
 describe("Basic Error Creation", () => {
   test("should create a simple error with typed context", () => {
@@ -30,7 +30,7 @@ describe("Basic Error Creation", () => {
     assert.deepEqual(context, { code: 400, detail: "Bad Request" });
 
     // Check instance checking function
-    assert.equal(checkInstance(error, SimpleError), true);
+    assert.equal(isError(error, SimpleError), true);
     assert.equal(error instanceof SimpleError, true);
   });
 
@@ -775,7 +775,7 @@ describe("Edge Cases and Special Behaviors", () => {
     });
 
     // TypeScript type guard with checkInstance
-    if (checkInstance(error, TypedError)) {
+    if (isError(error, TypedError)) {
       assert.equal(error.value, 42);
     } else {
       assert.fail("checkInstance should have returned true");
@@ -783,12 +783,12 @@ describe("Edge Cases and Special Behaviors", () => {
 
     // Check with non-matching error type
     const OtherError = createCustomError("OtherError", []);
-    assert.equal(checkInstance(error, OtherError), false);
+    assert.equal(isError(error, OtherError), false);
 
     // Check with non-error object
-    assert.equal(checkInstance({}, TypedError), false);
-    assert.equal(checkInstance(null, TypedError), false);
-    assert.equal(checkInstance(undefined, TypedError), false);
+    assert.equal(isError({}, TypedError), false);
+    assert.equal(isError(null, TypedError), false);
+    assert.equal(isError(undefined, TypedError), false);
   });
 
   test("should handle default message when not provided", () => {

@@ -6,7 +6,7 @@
  * and represents a common use case or pattern.
  */
 
-import { createCustomError, checkInstance } from "./main";
+import { createCustomError, isError } from "./main";
 
 /**
  * EXAMPLE 1: Basic Error Creation
@@ -38,7 +38,7 @@ function example1_1() {
     });
   } catch (error) {
     // Use `checkInstance` for proper TypeScript type inference
-    if (checkInstance(error, SimpleError)) {
+    if (isError(error, SimpleError)) {
       console.log("EXAMPLE 1.1: Simple Error");
       console.log(error);
       console.log(error.toString());
@@ -75,7 +75,7 @@ function example1_2() {
       },
     });
   } catch (error) {
-    if (checkInstance(error, ApiError)) {
+    if (isError(error, ApiError)) {
       console.log("EXAMPLE 1.2: API Error");
       console.log(error.toString());
 
@@ -137,7 +137,7 @@ function example2_1() {
       },
     });
   } catch (error) {
-    if (checkInstance(error, DataError)) {
+    if (isError(error, DataError)) {
       console.log("EXAMPLE 2.1: Basic Error Hierarchy");
       console.log("Example of Error call:\n", error);
       console.log("Example of Error Serialized:\n", error.toString());
@@ -211,7 +211,7 @@ function example2_2() {
       captureStack: true,
     });
   } catch (error) {
-    if (checkInstance(error, QueryError)) {
+    if (isError(error, QueryError)) {
       console.log("EXAMPLE 2.2: Three-Level Error Hierarchy");
       console.log(error.toString());
 
@@ -270,7 +270,7 @@ function example3_1() {
         },
       });
     } catch (networkError) {
-      if (checkInstance(networkError, NetworkError)) {
+      if (isError(networkError, NetworkError)) {
         // This is the child error (caused by the network error)
         throw new ServiceError({
           message: "Authentication service unavailable",
@@ -281,12 +281,12 @@ function example3_1() {
       throw networkError;
     }
   } catch (error) {
-    if (checkInstance(error, ServiceError)) {
+    if (isError(error, ServiceError)) {
       console.log("EXAMPLE 3.1: Basic Parent-Child Relationship");
       console.log(error.toString());
 
       // Access parent error
-      if (checkInstance(error, NetworkError)) {
+      if (isError(error, NetworkError)) {
         console.log(`Parent error context: Failed to connect to ${error.hostname}:${error.port}`);
       }
 
@@ -332,7 +332,7 @@ function example3_2() {
           },
         });
       } catch (systemError) {
-        if (checkInstance(systemError, SystemError)) {
+        if (isError(systemError, SystemError)) {
           // Level 2
           throw new FileError({
             message: "Could not read configuration file",
@@ -343,7 +343,7 @@ function example3_2() {
         throw systemError;
       }
     } catch (fileError) {
-      if (checkInstance(fileError, FileError)) {
+      if (isError(fileError, FileError)) {
         // Level 1 (what the application code catches)
         throw new ConfigError({
           message: "Application configuration invalid",
@@ -359,19 +359,19 @@ function example3_2() {
     }
   } catch (error) {
     console.log("EXAMPLE 3.2: Multi-level Error Chain");
-    if (checkInstance(error, ConfigError)) {
+    if (isError(error, ConfigError)) {
       // Access properties from the error
       console.log(`Config error key: ${error.configKey || "N/A"}`);
       console.log(`Expected type: ${error.expectedType || "N/A"}`);
     }
     // Check and access the parent if it exists
-    if (checkInstance(error, FileError)) {
+    if (isError(error, FileError)) {
       const fileErrorContext = FileError.getContext(error);
       console.log(`File error path: ${fileErrorContext?.path || "N/A"}`);
       console.log(`File operation: ${fileErrorContext?.operation || "N/A"}`);
     }
     // Check and access the grandparent if it exists
-    if (checkInstance(error, SystemError)) {
+    if (isError(error, SystemError)) {
       const systemErrorContext = SystemError.getContext(error);
       console.log(`System component: ${systemErrorContext?.component}`);
     }
@@ -458,7 +458,7 @@ function example4_1() {
       captureStack: true,
     });
   } catch (error) {
-    if (checkInstance(error, QueryError)) {
+    if (isError(error, QueryError)) {
       console.log("EXAMPLE 4.1: Combined Inheritance and Parent Chain");
 
       // Access properties directly across the inheritance chain
@@ -487,7 +487,7 @@ function example4_1() {
       cause: { host: "example.com" },
     });
 
-    if (checkInstance(netError, NetworkError)) {
+    if (isError(netError, NetworkError)) {
       console.log("Network error host:", netError.host);
     }
   }
@@ -559,7 +559,7 @@ function example5_1() {
     }
 
     // Use checkInstance for proper type inference with dynamically created errors
-    if (checkInstance(error, UserErrors.ValidationError)) {
+    if (isError(error, UserErrors.ValidationError)) {
       console.log(`Validation error on field ${error.field}: ${error.value}`);
       console.log(`Domain: ${error.domain}, Correlation ID: ${error.correlationId}`);
     }
@@ -606,7 +606,7 @@ function example5_2() {
     // Use the factory function
     throw createUserApiError(404, "/api/users/123", "123", "fetch");
   } catch (error) {
-    if (checkInstance(error, ApiError)) {
+    if (isError(error, ApiError)) {
       console.log("EXAMPLE 5.2: Error Factory Functions");
       console.log(error.toString());
 
@@ -674,7 +674,7 @@ function example5_3() {
       },
     });
   } catch (error) {
-    if (checkInstance(error, ConfigurationError)) {
+    if (isError(error, ConfigurationError)) {
       console.log("EXAMPLE 5.3: Deep Nested Context");
 
       // Direct access to nested properties
@@ -830,7 +830,7 @@ function example6_1() {
     console.log("Scenario 1: Invalid password");
     console.log(result1.error.toString());
 
-    if (checkInstance(result1.error, CredentialsError)) {
+    if (isError(result1.error, CredentialsError)) {
       // Direct property access with full TypeScript support
       console.log(`Auth failed for user: ${result1.error.userId}, reason: ${result1.error.reason}`);
       console.log(`Attempt count: ${result1.error.attemptCount}`);
@@ -843,7 +843,7 @@ function example6_1() {
     console.log("\nScenario 2: Missing MFA code");
     console.log(result2.error.toString());
 
-    if (checkInstance(result2.error, MfaError)) {
+    if (isError(result2.error, MfaError)) {
       // Direct property access
       console.log(
         `MFA required: ${result2.error.mfaType}, remaining attempts: ${result2.error.remainingAttempts}`,
@@ -857,7 +857,7 @@ function example6_1() {
     console.log("\nScenario 3: Session creation error");
     console.log(result3.error.toString());
 
-    if (checkInstance(result3.error, SessionError)) {
+    if (isError(result3.error, SessionError)) {
       // Direct property access
       console.log(
         `Session creation failed: ${result3.error.sessionId}, would expire at: ${result3.error.expiryTime}`,
@@ -918,7 +918,7 @@ function demonstrateDirectContextAccess() {
 
     throw error;
   } catch (error) {
-    if (checkInstance(error, NetworkError)) {
+    if (isError(error, NetworkError)) {
       console.log("Error details:", error.name, "-", error.message);
 
       // Method 1: Accessing context properties directly on the error
@@ -1052,7 +1052,7 @@ function demonstrateComplexExample() {
     });
   } catch (error) {
     // Use checkInstance for proper TypeScript type inference
-    if (checkInstance(error, QueryError)) {
+    if (isError(error, QueryError)) {
       console.log("Error:", error.name, "-", error.message);
 
       // Directly access properties at different inheritance levels
