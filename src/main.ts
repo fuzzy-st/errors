@@ -32,7 +32,7 @@
  * ```
  *
  * @see {@link createCustomError}
- * @see {@link checkInstance}
+ * @see {@link isError}
  * @author aFuzzyBear
  * @license MIT
  *
@@ -41,17 +41,17 @@
 /**
  * Type for extracting context from a CustomErrorClass
  */
-type ErrorContext<T> = T extends CustomErrorClass<infer Context> ? Context : Record<string, never>;
+export type ErrorContext<T> = T extends CustomErrorClass<infer Context> ? Context : Record<string, never>;
 
 /**
  * Collision strategy for handling context property name collisions
  */
-type CollisionStrategy = "override" | "preserve" | "error";
+export type CollisionStrategy = "override" | "preserve" | "error";
 
 /**
  * Options for creating or configuring an error instance
  */
-type ErrorOptions<OwnContext, ParentError extends CustomErrorClass<any> | undefined = undefined> = {
+export type CustomErrorOptions<OwnContext, ParentError extends CustomErrorClass<any> | undefined = undefined> = {
   message: string;
   captureStack?: boolean;
   overridePrototype?: ParentError;
@@ -60,17 +60,17 @@ type ErrorOptions<OwnContext, ParentError extends CustomErrorClass<any> | undefi
   maxParentChainLength?: number;
   parent?: Error;
 } & (
-  | { cause: OwnContext } // Context object
-  | { cause: string } // Cause message
-  | { cause?: undefined } // No cause
-);
+    | { cause: OwnContext } // Context object
+    | { cause: string } // Cause message
+    | { cause?: undefined } // No cause
+  );
 
 /**
  * Represents a custom error class with enhanced features
  */
-type CustomErrorClass<T> = {
-  new (
-    options: ErrorOptions<T, any>,
+export type CustomErrorClass<T> = {
+  new(
+    options: CustomErrorOptions<T, any>,
   ): Error &
     T & {
       inheritanceChain?: CustomErrorClass<any>[];
@@ -90,7 +90,7 @@ type CustomErrorClass<T> = {
    * Get full error hierarchy with contexts
    * @param error The error to get hierarchy for
    */
-  getErrorHierarchy(error: unknown): ErrorHierarchyItem[];
+  getErrorHierarchy(error: unknown): CustomErrorHierarchyItem[];
 
   /**
    * Follows the chain of parents and returns them as an array
@@ -121,7 +121,7 @@ type CustomErrorClass<T> = {
 /**
  * Represents a detailed error hierarchy item
  */
-interface ErrorHierarchyItem {
+export interface CustomErrorHierarchyItem {
   name: string;
   message: string;
   context?: Record<string, unknown>;
@@ -163,7 +163,7 @@ const DEFAULT_OPTIONS = {
  *   console.log(error.endpoint);
  * }
  */
-export function checkInstance<T>(
+export function isError<T>(
   error: unknown,
   instance: CustomErrorClass<T>,
 ): error is Error & T {
@@ -213,7 +213,7 @@ export function createCustomError<
     stack: any;
     _contextCached?: boolean;
 
-    constructor(options: ErrorOptions<OwnContext, ParentError>) {
+    constructor(options: CustomErrorOptions<OwnContext, ParentError>) {
       // Apply default options
       const finalOptions = {
         ...DEFAULT_OPTIONS,
@@ -402,8 +402,8 @@ export function createCustomError<
         // Build inheritance chain based on effective parent
         this.inheritanceChain =
           effectiveParent &&
-          effectiveParent !== (Error as unknown as CustomErrorClass<any>) &&
-          typeof effectiveParent.getInstances === "function"
+            effectiveParent !== (Error as unknown as CustomErrorClass<any>) &&
+            typeof effectiveParent.getInstances === "function"
             ? [...(effectiveParent.getInstances?.() || []), effectiveParent]
             : [];
 
@@ -592,7 +592,7 @@ export function createCustomError<
         options?: { includeParentContext?: boolean },
       ):
         | (OwnContext &
-            (ParentError extends CustomErrorClass<any> ? ErrorContext<ParentError> : {}))
+          (ParentError extends CustomErrorClass<any> ? ErrorContext<ParentError> : {}))
         | undefined => {
         if (!(error instanceof Error)) return undefined;
 
@@ -625,16 +625,16 @@ export function createCustomError<
      * Get full error hierarchy with contexts
      */
     getErrorHierarchy: {
-      value: (error: unknown): ErrorHierarchyItem[] => {
+      value: (error: unknown): CustomErrorHierarchyItem[] => {
         if (!(error instanceof Error)) return [];
 
-        const hierarchy: ErrorHierarchyItem[] = [];
+        const hierarchy: CustomErrorHierarchyItem[] = [];
         const seen = new WeakSet<Error>();
         let currentError:
           | (Error & {
-              inheritanceChain?: CustomErrorClass<any>[];
-              parent?: Error;
-            })
+            inheritanceChain?: CustomErrorClass<any>[];
+            parent?: Error;
+          })
           | undefined = error;
 
         while (currentError) {
@@ -645,7 +645,7 @@ export function createCustomError<
           }
           seen.add(currentError);
 
-          const hierarchyItem: ErrorHierarchyItem = {
+          const hierarchyItem: CustomErrorHierarchyItem = {
             name: currentError.name,
             message: currentError.message,
             context: errorContexts.get(currentError),
@@ -664,9 +664,9 @@ export function createCustomError<
           // Move to the next error in the chain
           currentError = currentError.parent as
             | (Error & {
-                inheritanceChain?: CustomErrorClass<any>[];
-                parent?: Error;
-              })
+              inheritanceChain?: CustomErrorClass<any>[];
+              parent?: Error;
+            })
             | undefined;
         }
 
