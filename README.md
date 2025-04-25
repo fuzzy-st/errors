@@ -8,7 +8,7 @@ Complete with:
 - Performance optimizations
 - Circular reference protection
 
-Its a fuzzy sort of idea, that by having a form of *contextual-based error support* we can **craft better consequences** when an `error` is eventually *thrown* in our near perfect code-bases.  
+Its a *fuzzy* sort of idea, that by having a form of *contextual-based error support* we can **craft better consequences** when an `error` is eventually *thrown* in our near perfect code-bases.  
 
 ## 🔍 Overview
 
@@ -37,7 +37,9 @@ Unlike standard JavaScript `class Error`'s or basic custom error extensions (for
 - 🏦 **Registry Management** - Access to all registered error classes for global management
 - 💻 **Developer-Friendly API** - A very simple yet powerful interface that us developers deserve
 - 🆓 **Dependency Free** - Yes, its completely devoid of any external dependencies
+- 🪖 **Battle tested** - Rigiourly tested API surface, trusted to last.
 - 💚 **Runtime & Environment** friendly, it can be run literally anywhere; In the browser, on the server, perhaps in your little IOT, heck even in your cup of tea!
+
 
 ## 📦 Installation
 
@@ -52,7 +54,7 @@ pnpm add @fuzzy-street/errors
 ## 🚀 Quick Start
 
 ```typescript
-import { createCustomError , checkInstance } from '@fuzzy-street/errors';
+import { createCustomError, isError } from '@fuzzy-street/errors';
 
 // Create a basic error class
 const ApiError = createCustomError<{
@@ -80,7 +82,7 @@ try {
     }
   });
 } catch (error) {
-  if (checkInstance(error, NetworkError)) {
+  if (isError(error, NetworkError)) {
     // Direct property access with full type safety
     console.log(`Status code: ${error.statusCode}`);
     console.log(`Retries attempted: ${error.retryCount}`);
@@ -168,7 +170,7 @@ try {
   // Code that might throw PermissionError
 } catch (error) {
   // Type-safe instance checking with proper TypeScript inference
-  if (checkInstance(error, PermissionError)) {
+  if (isError(error, PermissionError)) {
     // Direct access to all properties with full type safety
     console.log(`User '${error.currentUser}' lacks '${error.requiredPermission}' permission`);
     console.log(`Operation '${error.operation}' failed on '${error.path}'`);
@@ -223,16 +225,16 @@ try {
     // Create a new error with the database error as the parent
     throw new ApiError({
       message: "Failed to fetch user data",
-      cause: dbError, // Pass error as cause to establish parent relationship
+      parent: dbError, // Pass error as parent to establish parent relationship
       captureStack: true
     });
   }
 } catch (error) {
-  if (checkInstance(error, ApiError)) {
+  if (isError(error, ApiError)) {
     console.log(error.toString());
     
     // Access parent error
-    if (checkInstance(error, DatabaseError)) {
+    if (error.parent && isError(error.parent, DatabaseError)) {
       // Direct property access
       console.log(`Failed to connect to: ${error.parent.dbName}`);
       
@@ -247,8 +249,8 @@ try {
 ### High-Performance Error Creation
 
 ```typescript
-// For performance-critical paths, use createFast (40% faster)
 function logApiError(statusCode, endpoint) {
+  // 🚫 For performance-critical paths, use createFast (40% faster)
   // Fast error creation without stack traces or extra processing
   const error = ApiError.createFast("API request failed", {
     statusCode,
@@ -292,7 +294,7 @@ Creates a new custom error class with typed context.
 
 **Parameters:**
 - `name`: `string` - Name for the error class
-- `contextKeys`: `(keyof Context)[]` - Register the top-level Keys to determine the exact context for each error class.  
+- `contextKeys`: `(keyof Context)[]` - Register the top-level Keys to determine the exact context for each error class  
 - `parentError?`: `CustomErrorClass<any>` - Optional parent error class which to inherit context from
 
 **Returns:** `CustomErrorClass<Context & ParentContext>`
@@ -302,7 +304,8 @@ Creates a new custom error class with typed context.
 ```typescript
 {
   message: string;                     // Error message
-  cause?: Context | Error | string;    // Context object, parent error, or cause message
+  cause?: Context | string;            // Context object or cause message
+  parent?: Error;                      // Parent error reference
   captureStack?: boolean;              // Whether to capture stack trace (default: true)
   enumerableProperties?: boolean | string[]; // Make properties enumerable (default: false)
   collisionStrategy?: 'override' | 'preserve' | 'error'; // How to handle property collisions
@@ -316,7 +319,7 @@ These methods are provided to help provide better debugging and diagnostic suppo
 
 #### `.getContext(error, options?)`
 
-Retrieves the context associated with an error. Do bear in-mind that the **context** is the *contextual* information that was passed to each error `cause`. This would always be avaible to you on the presence of each *`createdCustomError`* 
+Retrieves the context associated with an error. Do bear in-mind that the **context** is the *contextual* information that was passed to each error `cause`. This would always be available to you on the presence of each *`createdCustomError`* 
 
 **Parameters:**
 - `error`: `unknown` - The error to examine
@@ -331,7 +334,7 @@ Gets the full error hierarchy information including contexts.
 **Parameters:**
 - `error`: `unknown` - The error to analyze
 
-**Returns:** `ErrorHierarchyItem[]`
+**Returns:** `CustomErrorHierarchyItem[]`
 
 #### `.followParentChain(error, options?)`
 
@@ -359,7 +362,7 @@ Creates an error instance with minimal overhead for extremely high-performance s
 
 **Returns:** `Error & Context`
 
-### `checkInstance<T>(error, instance)`
+### `isError<T>(error, instance)`
 
 Type-safe instance checking with proper TypeScript inference.
 
@@ -415,7 +418,7 @@ const NetworkError = createCustomError<{}, typeof ApiError>(
 const networkError = new NetworkError({...});
 const apiError = new ApiError({
   message: "API call failed",
-  cause: networkError // networkError is the parent of apiError
+  parent: networkError // networkError is the parent of apiError
 });
 ```
 
