@@ -30,7 +30,6 @@
     "lint": "biome lint --fix",
     "format": "biome format --fix --write",
     "setup-hooks": "node setup-git-hooks.js",
-    "postinstall": "node -e \"try { require('./setup-git-hooks.js') } catch(e) { console.log('Git hooks setup skipped.') }\"",
     "release": "standard-version",
     "release:minor": "standard-version --release-as minor",
     "release:patch": "standard-version --release-as patch",

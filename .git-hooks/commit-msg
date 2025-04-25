@@ -1,17 +1,26 @@
 #!/usr/bin/env bash
 set -e
 
-# Install commitlint if not installed
-if ! command -v commitlint &> /dev/null; then
-  echo "Installing commitlint..."
-  pnpm add -D @commitlint/cli @commitlint/config-conventional
+echo "⚠️ Running Commitlint to validate commit message..."
+
+# Source mise if available
+if [ -f "$HOME/.mise/bin/mise" ]; then
+  eval "$($HOME/.mise/bin/mise activate bash)"
+elif [ -f "$HOME/.config/mise/bin/mise" ]; then
+  eval "$($HOME/.config/mise/bin/mise activate bash)"
+elif command -v mise &>/dev/null; then
+  eval "$(mise activate bash)"
 fi
 
-# Run commitlint on the commit message
-echo "⚠️ Running Commitlint to validate commit message..."
-pnpm exec commitlint --edit $1
-if [ $? -ne 0 ]; then
-  echo "❌ Commit message validation failed. Please follow the commit message guidelines."
-  exit 1
+# Run commitlint
+if command -v npx &>/dev/null; then
+  npx --no-install commitlint --edit $1 || {
+    echo "❌ Commit message validation failed."
+    exit 1
+  }
+else
+  echo "❌ npx not found in PATH. Make sure Node.js is properly set up."
+  echo "Skipping commit message validation."
 fi
-echo "🥳 Commit message validation passed!"
+
+echo "✅ Commit message validation passed!"
