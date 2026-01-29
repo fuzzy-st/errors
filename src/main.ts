@@ -205,78 +205,120 @@ export function createCustomError<
   // Store the context keys for this class
   errorClassKeys.set(name, contextKeys as string[]);
 
+
   class CustomError extends ParentErrorClass {
     readonly name: string = name;
     inheritanceChain?: CustomErrorClass<any>[];
     parent?: Error;
-    message!: string;
-    stack: any;
-    _contextCached?: boolean;
+declare     message: string;
+declare     stack: string;
+    private _materializedParents?: Error[];
 
     constructor(options: CustomErrorOptions<OwnContext, ParentError>) {
-      // Apply default options
-      const finalOptions = {
-        ...DEFAULT_OPTIONS,
-        ...options,
-      };
+            // Call parent constructor with message
+      super(options?.message || "Unknown error");
 
-      // Call parent constructor with just the message
-      super(finalOptions?.message || "Unknown error");
-
-      if (finalOptions?.message) {
-        // Explicitly set the message property
-        Object.defineProperty(this, "message", {
-          value: finalOptions.message,
-          enumerable: false,
-          writable: true,
-          configurable: true,
-        });
-      }
-
-      // Now process the options after super() is called
-      if (finalOptions) {
+      // Apply defaults
+      const finalOptions = { ...DEFAULT_OPTIONS, ...options };
         const {
           message,
           cause,
           captureStack,
           parent,
-          overridePrototype,
-          enumerableProperties,
           collisionStrategy,
-          maxParentChainLength,
+          enumerableProperties,
+                    maxParentChainLength
         } = finalOptions;
 
-        // Determine which parent to use
-        const effectiveParent = overridePrototype || parentError;
-        let mergedContext: Record<string, unknown> = {};
-        let parentInstance: Error | undefined;
+        // Build merged context from cause and inherited class contexts
+      const mergedContext = this.buildMergedContext(cause, parentError);
 
-        // Handle parent error if provided
+      // Handle collision detection if requested
+      if (collisionStrategy === "error") {
+        this.checkContextCollisions(mergedContext, parentError);
+      }
+      // Assign context properties if any
+      if (Object.keys(mergedContext).length > 0) {
+        // Store in WeakMap for fast getContext() and GC-friendly behavior
+        errorContexts.set(this, mergedContext);
+
+        // Also assign to instance for fast property access
+        Object.assign(this, mergedContext);
+      }
+
+      // Build inheritance chain (class hierarchy, not instances)
+      // This tracks the CLASS relationships, not error causality
+      this.inheritanceChain = this.buildInheritanceChain(parentError);
+
+      // Handle parent instance
+      // Priority: explicit parent > string cause creates parent > no parent
+      let parentToSet: Error | undefined = parent;
+
+        // If cause is a string and no explicit parent, create Error instance
+      if (typeof cause === "string" && !parentToSet) {
+        parentToSet = new Error(cause);
+      }
+
+      // Set parent instance ONLY if explicitly provided or created from string
+      // This represents error CAUSALITY (A was caused by B)
+      // NOT inheritance (A inherits context keys from B)
+      if (parentToSet) {
+        this.validateParentChain(parentToSet, maxParentChainLength);
+        this.parent = parentToSet;
+      }
+
+      // Consolidated property definitions 
+      const propertyDescriptors: PropertyDescriptorMap = {
+        name: {
+          value: name,
+          enumerable: false,
+          configurable: true
+        },
+        message: {
+          value: message,
+          enumerable: false,
+          writable: true,
+          configurable: true
+        },
+      };
+
+      // Conditionally add parent descriptor
         if (parent) {
-          parentInstance = parent;
-
-          // Extract context from parent if available
-          const parentContext = errorContexts.get(parent);
-          if (parentContext) {
-            mergedContext = { ...parentContext };
+          propertyDescriptors.parent = {
+          value: parent,
+          enumerable: true,
+          writable: true,
+          configurable: true,
+        };
           }
-        }
-        // Handle various cause types
-        // if (cause) {
-        //   if (cause instanceof Error) {
-        //     // If cause is an error, use it as the parent
-        //     parentInstance = cause;
+        
+      // single Object.defineProperties call
+      // More efficient than multiple defineProperty calls as was in original
+      Object.defineProperties(this, propertyDescriptors);
 
-        //     // Extract context from error if available
-        //     const causeContext = errorContexts.get(cause);
-        //     if (causeContext) {
-        //       mergedContext = { ...causeContext };
-        //     }
-        //   } else if (typeof cause === "string") {
-        //     // If cause is a string, create a base error
-        //     parentInstance = new Error(cause);
-        //   } else if (typeof cause === "object") {
-        //     // If cause is an object, use it as context
+      // Capture stack trace if requested
+      // Only called when captureStack=true (default but overridable)
+      if (captureStack) {
+        if (typeof Error.captureStackTrace === "function") {
+          Error.captureStackTrace(this, CustomError);
+        } else {
+          // Fallback for non-V8 environments
+          this.stack = new Error().stack || "";
+        }
+      }
+
+      // Handle enumerable properties
+      if (enumerableProperties) {
+        this.makePropertiesEnumerable(enumerableProperties);
+      }
+    }
+
+    /**
+     * Build merged context from cause and parent class contexts
+     * 
+     * STRATEGY:
+     * 1. If cause is a string, no context to merge
+     * 2. If cause is an object, use it as context
         //     mergedContext = { ...cause };
 
         //     // Create parent errors to maintain the error chain
