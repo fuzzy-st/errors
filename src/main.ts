@@ -507,31 +507,36 @@ let depth = 0;
     }
 
     /**
-     * Checks for context property name collisions and throws an error if found
+     * Check for context property name collisions
      */
-    private checkContextCollisions(context: Record<string, unknown>): void {
-      // Get parent context keys
-      const parentKeys: string[] = [];
+    private checkContextCollisions(
+context: Record<string, unknown>,
+      parentErrorClass?: ParentError
+): void {
+      // Standard Error properties that cannot be overridden
+      const reservedProps = new Set([
+        "name", "message", "stack", "toString", "toJSON",
+        "constructor", "prototype"
+      ]);
 
-      // First, get parent context keys from inheritance chain
-      if (this.inheritanceChain) {
-        for (const parentClass of this.inheritanceChain) {
-          const classKeys = errorClassKeys.get(parentClass.name) || [];
-          parentKeys.push(...classKeys);
+      for (const key in context) {
+        if (reservedProps.has(key)) {
+          throw new Error(
+            `Context property '${key}' conflicts with reserved Error property`
+          );
         }
       }
 
-      // Check for collisions with parent context keys
+      // Check collisions with parent context keys only if explicitly requested
+      if (parentErrorClass) {
+        const parentKeys = new Set(this.getInheritedContextKeys(parentErrorClass));
       for (const key in context) {
-        if (parentKeys.includes(key)) {
+        if (parentKeys.has(key) && contextKeys.includes(key as any)) {
+// Only error if this class is trying to redefine a parent key
           throw new Error(
-            `Context property '${key}' conflicts with an existing property in parent context`,
+            `Context property '${key}' conflicts with parent context key`
           );
         }
-
-        // Also check for collisions with standard Error properties
-        if (["name", "message", "stack", "toString", "constructor"].includes(key)) {
-          throw new Error(`Context property '${key}' conflicts with a standard Error property`);
         }
       }
     }
