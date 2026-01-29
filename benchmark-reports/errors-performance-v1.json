@@ -1,0 +1,413 @@
+{
+  "title": "@fuzzy-street/errors Performance Analysis-v1",
+  "timestamp": "2026-01-29T14:16:02.161Z",
+  "systemInfo": {
+    "platform": "linux",
+    "nodeVersion": "v24.11.0",
+    "architecture": "x64",
+    "cpus": [
+      {
+        "model": "AMD Ryzen 5 3600 6-Core Processor",
+        "speed": 0
+      },
+      {
+        "model": "AMD Ryzen 5 3600 6-Core Processor",
+        "speed": 0
+      },
+      {
+        "model": "AMD Ryzen 5 3600 6-Core Processor",
+        "speed": 0
+      },
+      {
+        "model": "AMD Ryzen 5 3600 6-Core Processor",
+        "speed": 0
+      },
+      {
+        "model": "AMD Ryzen 5 3600 6-Core Processor",
+        "speed": 0
+      },
+      {
+        "model": "AMD Ryzen 5 3600 6-Core Processor",
+        "speed": 0
+      },
+      {
+        "model": "AMD Ryzen 5 3600 6-Core Processor",
+        "speed": 0
+      },
+      {
+        "model": "AMD Ryzen 5 3600 6-Core Processor",
+        "speed": 0
+      },
+      {
+        "model": "AMD Ryzen 5 3600 6-Core Processor",
+        "speed": 0
+      },
+      {
+        "model": "AMD Ryzen 5 3600 6-Core Processor",
+        "speed": 0
+      },
+      {
+        "model": "AMD Ryzen 5 3600 6-Core Processor",
+        "speed": 0
+      },
+      {
+        "model": "AMD Ryzen 5 3600 6-Core Processor",
+        "speed": 0
+      }
+    ],
+    "totalMemory": 20947607552,
+    "freeMemory": 14448640000
+  },
+  "benchmarks": [
+    {
+      "name": "Native Error",
+      "results": {
+        "duration": 303.274536,
+        "iterations": 100000,
+        "operationsPerSecond": 329734.2444866522,
+        "memoryDelta": {
+          "heapUsed": -428824,
+          "heapTotal": 905216,
+          "rss": 1835008,
+          "external": -53221
+        }
+      }
+    },
+    {
+      "name": "Simple Custom Error",
+      "results": {
+        "duration": 1310.4818089999999,
+        "iterations": 100000,
+        "operationsPerSecond": 76307.81237345662,
+        "memoryDelta": {
+          "heapUsed": 5338368,
+          "heapTotal": 6291456,
+          "rss": 6946816,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "Custom Error + Stack Capture",
+      "results": {
+        "duration": 1550.4685929999998,
+        "iterations": 100000,
+        "operationsPerSecond": 64496.63053574669,
+        "memoryDelta": {
+          "heapUsed": 3440120,
+          "heapTotal": 10883072,
+          "rss": 10878976,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "Two-Level Inheritance",
+      "results": {
+        "duration": 4587.026167,
+        "iterations": 100000,
+        "operationsPerSecond": 21800.61686140366,
+        "memoryDelta": {
+          "heapUsed": 5367440,
+          "heapTotal": 16252928,
+          "rss": 20557824,
+          "external": -36
+        }
+      }
+    },
+    {
+      "name": "Three-Level Inheritance",
+      "results": {
+        "duration": 8986.596072999999,
+        "iterations": 100000,
+        "operationsPerSecond": 11127.683851335822,
+        "memoryDelta": {
+          "heapUsed": 22072056,
+          "heapTotal": 48238592,
+          "rss": 45744128,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "Deep Nested Context",
+      "results": {
+        "duration": 1318.7201170000008,
+        "iterations": 100000,
+        "operationsPerSecond": 75831.10222622011,
+        "memoryDelta": {
+          "heapUsed": 10455520,
+          "heapTotal": 2887680,
+          "rss": 3538944,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "Direct Property - Simple",
+      "results": {
+        "duration": 13.976613999999245,
+        "iterations": 1000000,
+        "operationsPerSecond": 71548087.39799598,
+        "memoryDelta": {
+          "heapUsed": 2392,
+          "heapTotal": 262144,
+          "rss": 0,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "getContext() - Simple",
+      "results": {
+        "duration": 13.015466000000742,
+        "iterations": 1000000,
+        "operationsPerSecond": 76831670.87524511,
+        "memoryDelta": {
+          "heapUsed": 21856,
+          "heapTotal": 0,
+          "rss": 0,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "Direct Property - Inherited",
+      "results": {
+        "duration": 14.59168900000077,
+        "iterations": 1000000,
+        "operationsPerSecond": 68532162.3836656,
+        "memoryDelta": {
+          "heapUsed": 2400,
+          "heapTotal": 0,
+          "rss": 0,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "getContext() - Inherited (Full)",
+      "results": {
+        "duration": 12.926095999999234,
+        "iterations": 1000000,
+        "operationsPerSecond": 77362878.93885821,
+        "memoryDelta": {
+          "heapUsed": 3008,
+          "heapTotal": 0,
+          "rss": 0,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "getContext() - Inherited (Own Only)",
+      "results": {
+        "duration": 123.21893600000112,
+        "iterations": 1000000,
+        "operationsPerSecond": 8115635.733131073,
+        "memoryDelta": {
+          "heapUsed": -6557544,
+          "heapTotal": 0,
+          "rss": 131072,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "Deep Nested Direct Access",
+      "results": {
+        "duration": 23.670898999997007,
+        "iterations": 1000000,
+        "operationsPerSecond": 42245966.23897244,
+        "memoryDelta": {
+          "heapUsed": 3960,
+          "heapTotal": 0,
+          "rss": 0,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "Deep Nested via getContext()",
+      "results": {
+        "duration": 15.674499999997352,
+        "iterations": 1000000,
+        "operationsPerSecond": 63797888.28990839,
+        "memoryDelta": {
+          "heapUsed": 5408,
+          "heapTotal": 0,
+          "rss": 0,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "followParentChain - No Parents",
+      "results": {
+        "duration": 6.582814000001235,
+        "iterations": 100000,
+        "operationsPerSecond": 15191071.781760996,
+        "memoryDelta": {
+          "heapUsed": -8590688,
+          "heapTotal": 0,
+          "rss": 0,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "followParentChain - 1 Parent",
+      "results": {
+        "duration": 12.750693999998475,
+        "iterations": 100000,
+        "operationsPerSecond": 7842710.365413205,
+        "memoryDelta": {
+          "heapUsed": 8146432,
+          "heapTotal": 0,
+          "rss": 0,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "followParentChain - 2 Parents",
+      "results": {
+        "duration": 14.569043999999849,
+        "iterations": 100000,
+        "operationsPerSecond": 6863868.349906901,
+        "memoryDelta": {
+          "heapUsed": 8062592,
+          "heapTotal": 0,
+          "rss": 0,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "getErrorHierarchy - No Parents",
+      "results": {
+        "duration": 15.210620999998355,
+        "iterations": 100000,
+        "operationsPerSecond": 6574353.538886468,
+        "memoryDelta": {
+          "heapUsed": -20592528,
+          "heapTotal": 0,
+          "rss": 0,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "getErrorHierarchy - 1 Parent",
+      "results": {
+        "duration": 28.07448700000168,
+        "iterations": 100000,
+        "operationsPerSecond": 3561952.886262677,
+        "memoryDelta": {
+          "heapUsed": -2885360,
+          "heapTotal": 0,
+          "rss": 131072,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "getErrorHierarchy - 2 Parents",
+      "results": {
+        "duration": 44.42849000000206,
+        "iterations": 100000,
+        "operationsPerSecond": 2250807.983795879,
+        "memoryDelta": {
+          "heapUsed": 19485656,
+          "heapTotal": 0,
+          "rss": 0,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "Native Error - toString",
+      "results": {
+        "duration": 7.046151999998983,
+        "iterations": 50000,
+        "operationsPerSecond": 7096071.728229425,
+        "memoryDelta": {
+          "heapUsed": 2402528,
+          "heapTotal": 0,
+          "rss": 0,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "Custom Error - toString",
+      "results": {
+        "duration": 19.126094999999623,
+        "iterations": 50000,
+        "operationsPerSecond": 2614229.407518941,
+        "memoryDelta": {
+          "heapUsed": -24267952,
+          "heapTotal": 0,
+          "rss": 0,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "Complex Error - toString",
+      "results": {
+        "duration": 33.96422299999904,
+        "iterations": 50000,
+        "operationsPerSecond": 1472137.3134312956,
+        "memoryDelta": {
+          "heapUsed": 28450592,
+          "heapTotal": 262144,
+          "rss": 131072,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "Native Error - JSON.stringify",
+      "results": {
+        "duration": 4.825526999997237,
+        "iterations": 50000,
+        "operationsPerSecond": 10361562.581667999,
+        "memoryDelta": {
+          "heapUsed": 1202224,
+          "heapTotal": 0,
+          "rss": 0,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "Custom Error - JSON.stringify",
+      "results": {
+        "duration": 60.715855999998894,
+        "iterations": 50000,
+        "operationsPerSecond": 823508.1129384211,
+        "memoryDelta": {
+          "heapUsed": -12769608,
+          "heapTotal": 67633152,
+          "rss": 1441792,
+          "external": 0
+        }
+      }
+    },
+    {
+      "name": "Complex Error - JSON.stringify",
+      "results": {
+        "duration": 138.69698000000062,
+        "iterations": 50000,
+        "operationsPerSecond": 360498.11610894324,
+        "memoryDelta": {
+          "heapUsed": 46388936,
+          "heapTotal": 0,
+          "rss": 29282304,
+          "external": 0
+        }
+      }
+    }
+  ]
+}
