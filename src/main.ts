@@ -318,69 +318,53 @@ declare     stack: string;
      * 
      * STRATEGY:
      * 1. If cause is a string, no context to merge
-     * 2. If cause is an object, use it as context
-        //     mergedContext = { ...cause };
+     * 2. If cause is an object, treat as context
+     * 3. Include all context keys from parent classes (inheritance)
+     * 4. Do NOT create parent instances - just merge keys
+     */
+    private buildMergedContext(
+      cause: OwnContext | string | undefined,
+      parentErrorClass?: ParentError
+    ): Record<string, unknown> {
+      // Handle string cause (no context)
+      if (typeof cause === "string" || !cause) {
+        return {};
+      }
 
-        //     // Create parent errors to maintain the error chain
-        //     if (effectiveParent &&
-        //       effectiveParent !== (Error as unknown as CustomErrorClass<any>) &&
-        //       typeof effectiveParent.getInstances === 'function') {
-        //       try {
-        //         // Create a parent error instance
-        //         const parentKeys =
-        //           errorClassKeys.get(effectiveParent.name) || [];
-        //         const parentContext: Record<string, unknown> = {};
+      // Start with own context
+      const mergedContext: Record<string, unknown> = {};
 
-        //         // Extract only the keys relevant to the parent
-        //         for (const key of parentKeys) {
-        //           if (key in mergedContext) {
-        //             parentContext[key as string] = mergedContext[key as string];
-        //           }
-        //         }
+        // Collect all context keys from inheritance hierarchy
+      const allKeys = new Set<string>();
 
-        //         // Add keys from any ancestor classes
-        //         const ancestorClasses = effectiveParent.getInstances();
-        //         for (const ancestorClass of ancestorClasses) {
-        //           const ancestorKeys =
-        //             errorClassKeys.get(ancestorClass.name) || [];
-        //           for (const key of ancestorKeys) {
-        //             if (key in mergedContext && !(key in parentContext)) {
-        //               parentContext[key as string] =
-        //                 mergedContext[key as string];
-        //             }
-        //           }
-        //         }
+      // Add own keys
+      for (const key of contextKeys) {
+        allKeys.add(key as string);
+      }
 
-        //         parentInstance = new effectiveParent({
-        //           message: message || `${effectiveParent.name} Error`,
-        //           cause: parentContext,
-        //           captureStack, // Pass captureStack to parent
-        //           collisionStrategy,
-        //         });
-        //       } catch (e) {
-        //         console.warn(
-        //           `Failed to create ${effectiveParent?.name} instance:`,
-        //           e,
-        //         );
-        //       }
-        //     }
-        //   }
-        // }
-        if (cause) {
-          if (typeof cause === "string") {
-            // If cause is a string, create a base error
-            if (!parentInstance) {
-              parentInstance = new Error(cause);
+      // Add parent class keys if inheritance exists
+      if (parentErrorClass &&
+        parentErrorClass !== (Error as unknown as CustomErrorClass<any>)) {
+        const inheritedKeys = this.getInheritedContextKeys(parentErrorClass);
+        for (const key of inheritedKeys) {
+          allKeys.add(key);
+        }
+      }
+
+        // Merge only the keys that exist in cause
+      for (const key of allKeys) {
+          if (key in cause) {
+            mergedContext[key] = (cause as any)[key];
             }
-          } else if (typeof cause === "object") {
-            // If cause is an object, use it as context
-            mergedContext = { ...cause };
+          }
 
-            // Create parent errors to maintain the error chain
-            if (
-              !parentInstance &&
-              effectiveParent &&
-              effectiveParent !== (Error as unknown as CustomErrorClass<any>) &&
+      return mergedContext;
+    }
+
+    /**
+     * Get all context keys from parent class hierarchy
+     */
+    private getInheritedContextKeys(parentErrorClass: CustomErrorClass<any>) &&
               typeof effectiveParent.getInstances === "function"
             ) {
               try {
