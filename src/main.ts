@@ -647,7 +647,11 @@ if (!fullContext) return {};
   // Add static methods
   Object.defineProperties(CustomError, {
     /**
-     * Retrieves the context data from an error instance
+     * Get context from error instance
+* 
+     * IMPLEMENTATION:
+     * Uses WeakMap for O(1) lookup (fast path)
+     * Only filters keys if includeParentContext: false
      */
     getContext: {
       value: (
@@ -659,26 +663,32 @@ if (!fullContext) return {};
         | undefined => {
         if (!(error instanceof Error)) return undefined;
 
+// Fast path: get full context from WeakMap
         const fullContext = errorContexts.get(error);
         if (!fullContext) return undefined;
 
+// FAST PATH: If including parent context or no filtering needed, return immediately
+        // This avoids all the filtering logic overhead
         if (options?.includeParentContext !== false) {
-          // Return the full context
-          return fullContext;
+          return fullContext as any;
         }
 
-        // If we only want this class's context, filter for the specified keys
-        const result: Record<string, unknown> = {};
-        const keys = errorClassKeys.get(name);
-        if (keys) {
-          for (const key of keys) {
+        // SLOW PATH: Filter to only this class's keys
+        // This path is only taken when explicitly requested
+        const ownKeys = errorClassKeys.get(name);
+        if (!ownKeys || ownKeys.length === 0) {
+          return undefined;
+        }
+
+        // Build filtered context with only own keys
+        const filtered: Record<string, unknown> = {};
+        for (const key of ownKeys) {
             if (key in fullContext) {
-              result[key] = fullContext[key];
-            }
-          }
+              filtered[key] = fullContext[key];
+                      }
         }
 
-        return Object.keys(result).length > 0 ? (result as any) : undefined;
+        return Object.keys(filtered).length > 0 ? (filtered as any) : undefined;
       },
       enumerable: false,
       configurable: true,
@@ -693,44 +703,36 @@ if (!fullContext) return {};
 
         const hierarchy: CustomErrorHierarchyItem[] = [];
         const seen = new WeakSet<Error>();
-        let currentError:
-          | (Error & {
-            inheritanceChain?: CustomErrorClass<any>[];
-            parent?: Error;
-          })
-          | undefined = error;
+        let currentError: any = error;
 
         while (currentError) {
-          // Check for circular references
-          if (seen.has(currentError)) {
+                    if (seen.has(currentError)) {
             console.warn("Circular reference detected in error hierarchy");
             break;
           }
           seen.add(currentError);
 
+// Get context for this error
+          const context =
+            typeof currentError.getOwnContext === "function"
+              ? currentError.getOwnContext()
+              : undefined;
+
           const hierarchyItem: CustomErrorHierarchyItem = {
             name: currentError.name,
             message: currentError.message,
-            context: errorContexts.get(currentError),
+            context,
             inheritanceChain: currentError.inheritanceChain
-              ? currentError.inheritanceChain.map((e) => e.name)
+              ? currentError.inheritanceChain.map((e: any) => e.name)
               : undefined,
           };
 
-          // Add parent if it exists
-          if (currentError.parent) {
+                    if (currentError.parent) {
             hierarchyItem.parent = `${currentError.parent.name}: ${currentError.parent.message}`;
           }
 
           hierarchy.push(hierarchyItem);
-
-          // Move to the next error in the chain
-          currentError = currentError.parent as
-            | (Error & {
-              inheritanceChain?: CustomErrorClass<any>[];
-              parent?: Error;
-            })
-            | undefined;
+          currentError = currentError.parent;
         }
 
         return hierarchy;
