@@ -404,79 +404,76 @@ declare     stack: string;
       if (typeof parentErrorClass.getInstances === "function") {
         chain.push(...(parentErrorClass.getInstances() || []));
               }
+            
+      chain.push(parentErrorClass);
+
+      return chain;
+    }
+
+    /**
+     * Lazily materialize parent instances from inheritance chain
+     * Only called when `followParentChain()` or `getErrorHierarchy()` is invoked
+     * Caches result to avoid repeated materialization
+     */
+    private materializeParentChain(): Error[] {
+      // Return cached result if already materialized
+      if (this._materializedParents) {
+        return this._materializedParents;
+        }
+
+        // No inheritance chain = just return self
+      if (!this.inheritanceChain ||         this.inheritanceChain.length === 0) {
+        this._materializedParents = [this];
+        return this._materializedParents;
+      }
+
+      const chain: Error[] = [this];
+      const fullContext = errorContexts.get(this);
+
+      // Walk backwards through inheritance chain (most specific to least specific)
+      // e.g., QueryError -> DatabaseError -> AppError
+      let previousInstance: any = this;
+
+      for (let i = this.inheritanceChain.length - 1; i >= 0; i--) {
+        const ParentClass = this.inheritanceChain[i];
+        const parentKeys = errorClassKeys.get(ParentClass.name) || [];
+
+        // Extract context keys relevant to this parent level
+        const parentContext: Record<string, unknown> = {};
+        if (fullContext) {
+          for (const key of parentKeys) {
+            if (key in fullContext) {
+              parentContext[key] = fullContext[key];
             }
           }
         }
 
-        // Set name properties
-        Object.defineProperty(this, "name", {
-          value: name,
-          enumerable: false,
-          configurable: true,
+        // Create synthetic parent instance
+        const parentInstance = new ParentClass({
+          message: `${ParentClass.name} (inherited)`,
+          cause: Object.keys(parentContext).length > 0 ? parentContext : undefined,
+          captureStack: false, // Don't waste time on synthetic stack traces
         });
 
-        // Assign parent
-        if (parentInstance) {
-          // Check for circular references
-          if (this === parentInstance || this.isInParentChain(parentInstance)) {
-            console.warn(`Circular reference detected when setting parent of ${name}`);
-          } else {
-            Object.defineProperty(this, "parent", {
-              value: parentInstance,
-              enumerable: true,
-              writable: true,
-              configurable: true,
-            });
-          }
-        }
-
-        // Build inheritance chain based on effective parent
-        this.inheritanceChain =
-          effectiveParent &&
-            effectiveParent !== (Error as unknown as CustomErrorClass<any>) &&
-            typeof effectiveParent.getInstances === "function"
-            ? [...(effectiveParent.getInstances?.() || []), effectiveParent]
-            : [];
-
-        // Handle context collisions
-        if (collisionStrategy === "error") {
-          this.checkContextCollisions(mergedContext);
-        }
-
-        // Store the full context
-        if (Object.keys(mergedContext).length > 0) {
-          errorContexts.set(this, { ...mergedContext });
-
-          // Assign all context properties to the error instance
-          Object.assign(this, mergedContext);
-        }
-
-        // Handle stack trace
-        if (captureStack && typeof Error?.captureStackTrace === "function") {
-          Error.captureStackTrace(this, CustomError);
-        } else if (captureStack) {
-          // Fallback for environments without captureStackTrace
-          this.stack = new Error().stack;
-        }
-
-        // Handle enumerable properties
-        if (enumerableProperties) {
-          this.makePropertiesEnumerable(enumerableProperties);
-        }
-
-        // Store the maxParentChainLength in the error instance for later use
-        if (maxParentChainLength) {
-          Object.defineProperty(this, "maxParentChainLength", {
-            value: maxParentChainLength,
-            enumerable: false,
+        // Link previous instance's parent to this new instance
+          Object.defineProperty(previousInstance, 'parent', {
+            value: parentInstance,
+            enumerable: true,
+          writable: true,
             configurable: true,
           });
-        }
-      }
+        
+        chain.push(parentInstance);
+        previousInstance = parentInstance;
+    }
+
+    // Cache the materialized chain
+      this._materializedParents = chain;
+      return chain;
     }
 
     /**
-     * Checks if an error is in the parent chain to detect circular references
+     * Validate parent chain for circular references and depth
      */
     private isInParentChain(potentialParent: Error): boolean {
       let current: any = this.parent;
