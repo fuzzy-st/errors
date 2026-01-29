@@ -364,40 +364,45 @@ declare     stack: string;
     /**
      * Get all context keys from parent class hierarchy
      */
-    private getInheritedContextKeys(parentErrorClass: CustomErrorClass<any>) &&
-              typeof effectiveParent.getInstances === "function"
-            ) {
-              try {
-                // Create a parent error instance
-                const parentKeys = errorClassKeys.get(effectiveParent.name) || [];
-                const parentContext: Record<string, unknown> = {};
+    private getInheritedContextKeys(parentErrorClass: CustomErrorClass<any>): string[] {
+      const keys: string[] = [];
 
-                // Extract only the keys relevant to the parent
-                for (const key of parentKeys) {
-                  if (key in mergedContext) {
-                    parentContext[key as string] = mergedContext[key as string];
-                  }
-                }
+      // Get parent's own keys
+                const parentKeys = errorClassKeys.get(parentErrorClass.name);
+      if (parentKeys) {
+        keys.push(...parentKeys);
+      }
 
-                // Add keys from any ancestor classes
-                const ancestorClasses = effectiveParent.getInstances();
-                for (const ancestorClass of ancestorClasses) {
-                  const ancestorKeys = errorClassKeys.get(ancestorClass.name) || [];
-                  for (const key of ancestorKeys) {
-                    if (key in mergedContext && !(key in parentContext)) {
-                      parentContext[key as string] = mergedContext[key as string];
-                    }
-                  }
-                }
+      // Get ancestor keys via getInstances()
+      if (typeof parentErrorClass.getInstances === "function") {
+        const ancestors = parentErrorClass.getInstances();
+                for (const ancestor of ancestors) {
+                  const ancestorKeys = errorClassKeys.get(ancestor.name);
+          if (ancestorKeys) {
+            keys.push(...ancestorKeys);
+          }
+        }
+      }
 
-                parentInstance = new effectiveParent({
-                  message: message || `${effectiveParent.name} Error`,
-                  cause: parentContext,
-                  captureStack, // Pass captureStack to parent
-                  collisionStrategy,
-                });
-              } catch (e) {
-                console.warn(`Failed to create ${effectiveParent?.name} instance:`, e);
+      return keys;
+    }
+
+    /**
+     * Build inheritance chain from parent class
+     * Returns array of error CLASSES, not instances
+     */
+    private buildInheritanceChain(
+      parentErrorClass?: ParentError
+    ): CustomErrorClass<any>[] {
+      if (!parentErrorClass ||
+        parentErrorClass === (Error as unknown as ParentError)) {
+        return [];
+      }
+
+      const chain: CustomErrorClass<any>[] = [];
+
+      if (typeof parentErrorClass.getInstances === "function") {
+        chain.push(...(parentErrorClass.getInstances() || []));
               }
             }
           }
