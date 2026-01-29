@@ -17,6 +17,9 @@ importers:
       '@commitlint/config-conventional':
         specifier: ^19.8.0
         version: 19.8.0
+      '@fuzzy-street/benchmarks':
+        specifier: ^0.3.2
+        version: 0.3.2
       '@types/node':
         specifier: ^22.14.0
         version: 22.14.0
@@ -317,6 +320,9 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@fuzzy-street/benchmarks@0.3.2':
+    resolution: {integrity: sha512-Jq2rjp6f8pu4btkNLifAQSYifx17DrYGyPXxvLyMEoJk6vyRDdgr7tI7RGS1W/mgrDuTmmwUq92y9F/lvlO+jQ==}
 
   '@hutson/parse-repository-url@3.0.2':
     resolution: {integrity: sha512-H9XAx3hc0BQHY6l+IFSWHDySypcXsvsuLhgYLUGywmJ5pswRVQJUHpOsobnLYp2ZUaUlKiKDrgWWhosOwAEM8Q==}
@@ -1991,6 +1997,8 @@ snapshots:
 
   '@esbuild/win32-x64@0.25.2':
     optional: true
+
+  '@fuzzy-street/benchmarks@0.3.2': {}
 
   '@hutson/parse-repository-url@3.0.2': {}
 

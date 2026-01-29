@@ -1,3 +1,4 @@
+
 /**
  * # CustomError
  *
@@ -60,9 +61,9 @@ export type CustomErrorOptions<OwnContext, ParentError extends CustomErrorClass<
   maxParentChainLength?: number;
   parent?: Error;
 } & (
-    | { cause: OwnContext } // Context object
-    | { cause: string } // Cause message
-    | { cause?: undefined } // No cause
+  | { cause: OwnContext }
+  | { cause: string }
+  | { cause?: undefined }
   );
 
 /**
@@ -85,24 +86,20 @@ export type CustomErrorClass<T> = {
    * @param options Options for context retrieval
    */
   getContext(error: unknown, options?: { includeParentContext?: boolean }): T | undefined;
-
   /**
    * Get full error hierarchy with contexts
    * @param error The error to get hierarchy for
    */
   getErrorHierarchy(error: unknown): CustomErrorHierarchyItem[];
-
   /**
-   * Follows the chain of parents and returns them as an array
-   * @param error The error to get parent chain for
-   */
+  * Follows the chain of parents and returns them as an array
+  * @param error The error to get parent chain for
+  */
   followParentChain(error: Error): Error[];
-
   /**
-   * Returns the full inheritance chain of error classes
-   */
+ * Returns the full inheritance chain of error classes
+ */
   getInstances(): CustomErrorClass<any>[];
-
   /**
    * Creates a simplified error with minimal overhead for high-performance scenarios
    * @param message Error message
@@ -111,10 +108,6 @@ export type CustomErrorClass<T> = {
   createFast(message: string, context?: Partial<T>): Error & T;
 
   prototype: Error;
-
-  /**
-   * Name of the error class
-   */
   readonly name: string;
 };
 
@@ -129,10 +122,10 @@ export interface CustomErrorHierarchyItem {
   inheritanceChain?: string[];
 }
 
-// WeakMap to store full context
-const errorContexts = new WeakMap<Error, any>();
+// WeakMap for context storage - allows GC to clean up when error is collected
+const errorContexts = new WeakMap<Error, Record<string, unknown>>();
 
-// Store context keys per error class
+// Store context keys per error class (lightweight metadata)
 const errorClassKeys = new Map<string, string[]>();
 
 // Global registry to track all created custom error classes
@@ -150,18 +143,6 @@ const DEFAULT_OPTIONS = {
 
 /**
  * Type-safe instance checker for custom errors
- * This function provides proper TypeScript type inference when checking error instances
- *
- * @param error The error to check
- * @param instance The custom error class to check against
- * @returns Type guard assertion that the error is of type Error & T
- *
- * @example
- * if (checkInstance(error, ApiError)) {
- *   // TypeScript now knows these properties exist
- *   console.log(error.statusCode);
- *   console.log(error.endpoint);
- * }
  */
 export function isError<T>(
   error: unknown,
@@ -199,310 +180,356 @@ export function createCustomError<
 ): CustomErrorClass<
   OwnContext & (ParentError extends CustomErrorClass<any> ? ErrorContext<ParentError> : {})
 > {
-  // Determine the parent error class
+  // Determine the parent error class for prototype chain
   const ParentErrorClass = parentError ?? Error;
 
-  // Store the context keys for this class
+  // Store context keys for this class (used by getContext with includeParentContext: false)
   errorClassKeys.set(name, contextKeys as string[]);
+
 
   class CustomError extends ParentErrorClass {
     readonly name: string = name;
     inheritanceChain?: CustomErrorClass<any>[];
     parent?: Error;
-    message!: string;
-    stack: any;
-    _contextCached?: boolean;
+    declare message: string;
+    declare stack: string;
+    private _materializedParents?: Error[];
 
     constructor(options: CustomErrorOptions<OwnContext, ParentError>) {
-      // Apply default options
-      const finalOptions = {
-        ...DEFAULT_OPTIONS,
-        ...options,
+      // Call parent constructor with message
+      super(options?.message || "Unknown error");
+
+      // Apply defaults
+      const finalOptions = { ...DEFAULT_OPTIONS, ...options };
+      const {
+        message,
+        cause,
+        captureStack,
+        parent,
+        collisionStrategy,
+        enumerableProperties,
+        maxParentChainLength
+      } = finalOptions;
+
+      // Build merged context from cause and inherited class contexts
+      const mergedContext = this.buildMergedContext(cause, parentError);
+
+      // Handle collision detection if requested
+      if (collisionStrategy === "error") {
+        this.checkContextCollisions(mergedContext, parentError);
+      }
+      // Assign context properties if any
+      if (Object.keys(mergedContext).length > 0) {
+        // Store in WeakMap for fast getContext() and GC-friendly behavior
+        errorContexts.set(this, mergedContext);
+
+        // Also assign to instance for fast property access
+        Object.assign(this, mergedContext);
+      }
+
+      // Build inheritance chain (class hierarchy, not instances)
+      // This tracks the CLASS relationships, not error causality
+      this.inheritanceChain = this.buildInheritanceChain(parentError);
+
+      // Handle parent instance
+      // Priority: explicit parent > string cause creates parent > no parent
+      let parentToSet: Error | undefined = parent;
+
+      // If cause is a string and no explicit parent, create Error instance
+      if (typeof cause === "string" && !parentToSet) {
+        parentToSet = new Error(cause);
+      }
+
+      // Set parent instance ONLY if explicitly provided or created from string
+      // This represents error CAUSALITY (A was caused by B)
+      // NOT inheritance (A inherits context keys from B)
+      if (parentToSet) {
+        this.validateParentChain(parentToSet, maxParentChainLength);
+        this.parent = parentToSet;
+      }
+
+      // Consolidated property definitions 
+      const propertyDescriptors: PropertyDescriptorMap = {
+        name: {
+          value: name,
+          enumerable: false,
+          configurable: true
+        },
+        message: {
+          value: message,
+          enumerable: false,
+          writable: true,
+          configurable: true
+        },
       };
 
-      // Call parent constructor with just the message
-      super(finalOptions?.message || "Unknown error");
+      // Conditionally add parent descriptor
+      if (parent) {
+        propertyDescriptors.parent = {
+          value: parent,
+          enumerable: true,
+          writable: true,
+          configurable: true,
+        };
+      }
 
-      if (finalOptions?.message) {
-        // Explicitly set the message property
-        Object.defineProperty(this, "message", {
-          value: finalOptions.message,
-          enumerable: false,
+      // single Object.defineProperties call
+      // More efficient than multiple defineProperty calls as was in original
+      Object.defineProperties(this, propertyDescriptors);
+
+      // Capture stack trace if requested
+      // Only called when captureStack=true (default but overridable)
+      if (captureStack) {
+        if (typeof Error.captureStackTrace === "function") {
+          Error.captureStackTrace(this, CustomError);
+        } else {
+          // Fallback for non-V8 environments
+          this.stack = new Error().stack || "";
+        }
+      }
+
+      // Handle enumerable properties
+      if (enumerableProperties) {
+        this.makePropertiesEnumerable(enumerableProperties);
+      }
+    }
+
+    /**
+     * Build merged context from cause and parent class contexts
+     * 
+     * STRATEGY:
+     * 1. If cause is a string, no context to merge
+     * 2. If cause is an object, treat as context
+     * 3. Include all context keys from parent classes (inheritance)
+     * 4. Do NOT create parent instances - just merge keys
+     */
+    private buildMergedContext(
+      cause: OwnContext | string | undefined,
+      parentErrorClass?: ParentError
+    ): Record<string, unknown> {
+      // Handle string cause (no context)
+      if (typeof cause === "string" || !cause) {
+        return {};
+      }
+
+      // Start with own context
+      const mergedContext: Record<string, unknown> = {};
+
+      // Collect all context keys from inheritance hierarchy
+      const allKeys = new Set<string>();
+
+      // Add own keys
+      for (const key of contextKeys) {
+        allKeys.add(key as string);
+      }
+
+      // Add parent class keys if inheritance exists
+      if (parentErrorClass &&
+        parentErrorClass !== (Error as unknown as CustomErrorClass<any>)) {
+        const inheritedKeys = this.getInheritedContextKeys(parentErrorClass);
+        for (const key of inheritedKeys) {
+          allKeys.add(key);
+        }
+      }
+
+      // Merge only the keys that exist in cause
+      for (const key of allKeys) {
+        if (key in cause) {
+          mergedContext[key] = (cause as any)[key];
+        }
+      }
+
+      return mergedContext;
+    }
+
+    /**
+     * Get all context keys from parent class hierarchy
+     */
+    private getInheritedContextKeys(parentErrorClass: CustomErrorClass<any>): string[] {
+      const keys: string[] = [];
+
+      // Get parent's own keys
+      const parentKeys = errorClassKeys.get(parentErrorClass.name);
+      if (parentKeys) {
+        keys.push(...parentKeys);
+      }
+
+      // Get ancestor keys via getInstances()
+      if (typeof parentErrorClass.getInstances === "function") {
+        const ancestors = parentErrorClass.getInstances();
+        for (const ancestor of ancestors) {
+          const ancestorKeys = errorClassKeys.get(ancestor.name);
+          if (ancestorKeys) {
+            keys.push(...ancestorKeys);
+          }
+        }
+      }
+
+      return keys;
+    }
+
+    /**
+     * Build inheritance chain from parent class
+     * Returns array of error CLASSES, not instances
+     */
+    private buildInheritanceChain(
+      parentErrorClass?: ParentError
+    ): CustomErrorClass<any>[] {
+      if (!parentErrorClass ||
+        parentErrorClass === (Error as unknown as ParentError)) {
+        return [];
+      }
+
+      const chain: CustomErrorClass<any>[] = [];
+
+      if (typeof parentErrorClass.getInstances === "function") {
+        chain.push(...(parentErrorClass.getInstances() || []));
+      }
+
+      chain.push(parentErrorClass);
+
+      return chain;
+    }
+
+    /**
+     * Lazily materialize parent instances from inheritance chain
+     * Only called when `followParentChain()` or `getErrorHierarchy()` is invoked
+     * Caches result to avoid repeated materialization
+     */
+    private materializeParentChain(): Error[] {
+      // Return cached result if already materialized
+      if (this._materializedParents) {
+        return this._materializedParents;
+      }
+
+      // No inheritance chain = just return self
+      if (!this.inheritanceChain || this.inheritanceChain.length === 0) {
+        this._materializedParents = [this];
+        return this._materializedParents;
+      }
+
+      const chain: Error[] = [this];
+      const fullContext = errorContexts.get(this);
+
+      // Walk backwards through inheritance chain (most specific to least specific)
+      // e.g., QueryError -> DatabaseError -> AppError
+      let previousInstance: any = this;
+
+      for (let i = this.inheritanceChain.length - 1; i >= 0; i--) {
+        const ParentClass = this.inheritanceChain[i];
+        const parentKeys = errorClassKeys.get(ParentClass.name) || [];
+
+        // Extract context keys relevant to this parent level
+        const parentContext: Record<string, unknown> = {};
+        if (fullContext) {
+          for (const key of parentKeys) {
+            if (key in fullContext) {
+              parentContext[key] = fullContext[key];
+            }
+          }
+        }
+
+        // Create synthetic parent instance
+        const parentInstance = new ParentClass({
+          message: `${ParentClass.name} (inherited)`,
+          cause: Object.keys(parentContext).length > 0 ? parentContext : undefined,
+          captureStack: false, // Don't waste time on synthetic stack traces
+        });
+
+        // Link previous instance's parent to this new instance
+        Object.defineProperty(previousInstance, 'parent', {
+          value: parentInstance,
+          enumerable: true,
           writable: true,
           configurable: true,
         });
+
+        chain.push(parentInstance);
+        previousInstance = parentInstance;
       }
 
-      // Now process the options after super() is called
-      if (finalOptions) {
-        const {
-          message,
-          cause,
-          captureStack,
-          parent,
-          overridePrototype,
-          enumerableProperties,
-          collisionStrategy,
-          maxParentChainLength,
-        } = finalOptions;
-
-        // Determine which parent to use
-        const effectiveParent = overridePrototype || parentError;
-        let mergedContext: Record<string, unknown> = {};
-        let parentInstance: Error | undefined;
-
-        // Handle parent error if provided
-        if (parent) {
-          parentInstance = parent;
-
-          // Extract context from parent if available
-          const parentContext = errorContexts.get(parent);
-          if (parentContext) {
-            mergedContext = { ...parentContext };
-          }
-        }
-        // Handle various cause types
-        // if (cause) {
-        //   if (cause instanceof Error) {
-        //     // If cause is an error, use it as the parent
-        //     parentInstance = cause;
-
-        //     // Extract context from error if available
-        //     const causeContext = errorContexts.get(cause);
-        //     if (causeContext) {
-        //       mergedContext = { ...causeContext };
-        //     }
-        //   } else if (typeof cause === "string") {
-        //     // If cause is a string, create a base error
-        //     parentInstance = new Error(cause);
-        //   } else if (typeof cause === "object") {
-        //     // If cause is an object, use it as context
-        //     mergedContext = { ...cause };
-
-        //     // Create parent errors to maintain the error chain
-        //     if (effectiveParent &&
-        //       effectiveParent !== (Error as unknown as CustomErrorClass<any>) &&
-        //       typeof effectiveParent.getInstances === 'function') {
-        //       try {
-        //         // Create a parent error instance
-        //         const parentKeys =
-        //           errorClassKeys.get(effectiveParent.name) || [];
-        //         const parentContext: Record<string, unknown> = {};
-
-        //         // Extract only the keys relevant to the parent
-        //         for (const key of parentKeys) {
-        //           if (key in mergedContext) {
-        //             parentContext[key as string] = mergedContext[key as string];
-        //           }
-        //         }
-
-        //         // Add keys from any ancestor classes
-        //         const ancestorClasses = effectiveParent.getInstances();
-        //         for (const ancestorClass of ancestorClasses) {
-        //           const ancestorKeys =
-        //             errorClassKeys.get(ancestorClass.name) || [];
-        //           for (const key of ancestorKeys) {
-        //             if (key in mergedContext && !(key in parentContext)) {
-        //               parentContext[key as string] =
-        //                 mergedContext[key as string];
-        //             }
-        //           }
-        //         }
-
-        //         parentInstance = new effectiveParent({
-        //           message: message || `${effectiveParent.name} Error`,
-        //           cause: parentContext,
-        //           captureStack, // Pass captureStack to parent
-        //           collisionStrategy,
-        //         });
-        //       } catch (e) {
-        //         console.warn(
-        //           `Failed to create ${effectiveParent?.name} instance:`,
-        //           e,
-        //         );
-        //       }
-        //     }
-        //   }
-        // }
-        if (cause) {
-          if (typeof cause === "string") {
-            // If cause is a string, create a base error
-            if (!parentInstance) {
-              parentInstance = new Error(cause);
-            }
-          } else if (typeof cause === "object") {
-            // If cause is an object, use it as context
-            mergedContext = { ...cause };
-
-            // Create parent errors to maintain the error chain
-            if (
-              !parentInstance &&
-              effectiveParent &&
-              effectiveParent !== (Error as unknown as CustomErrorClass<any>) &&
-              typeof effectiveParent.getInstances === "function"
-            ) {
-              try {
-                // Create a parent error instance
-                const parentKeys = errorClassKeys.get(effectiveParent.name) || [];
-                const parentContext: Record<string, unknown> = {};
-
-                // Extract only the keys relevant to the parent
-                for (const key of parentKeys) {
-                  if (key in mergedContext) {
-                    parentContext[key as string] = mergedContext[key as string];
-                  }
-                }
-
-                // Add keys from any ancestor classes
-                const ancestorClasses = effectiveParent.getInstances();
-                for (const ancestorClass of ancestorClasses) {
-                  const ancestorKeys = errorClassKeys.get(ancestorClass.name) || [];
-                  for (const key of ancestorKeys) {
-                    if (key in mergedContext && !(key in parentContext)) {
-                      parentContext[key as string] = mergedContext[key as string];
-                    }
-                  }
-                }
-
-                parentInstance = new effectiveParent({
-                  message: message || `${effectiveParent.name} Error`,
-                  cause: parentContext,
-                  captureStack, // Pass captureStack to parent
-                  collisionStrategy,
-                });
-              } catch (e) {
-                console.warn(`Failed to create ${effectiveParent?.name} instance:`, e);
-              }
-            }
-          }
-        }
-
-        // Set name properties
-        Object.defineProperty(this, "name", {
-          value: name,
-          enumerable: false,
-          configurable: true,
-        });
-
-        // Assign parent
-        if (parentInstance) {
-          // Check for circular references
-          if (this === parentInstance || this.isInParentChain(parentInstance)) {
-            console.warn(`Circular reference detected when setting parent of ${name}`);
-          } else {
-            Object.defineProperty(this, "parent", {
-              value: parentInstance,
-              enumerable: true,
-              writable: true,
-              configurable: true,
-            });
-          }
-        }
-
-        // Build inheritance chain based on effective parent
-        this.inheritanceChain =
-          effectiveParent &&
-            effectiveParent !== (Error as unknown as CustomErrorClass<any>) &&
-            typeof effectiveParent.getInstances === "function"
-            ? [...(effectiveParent.getInstances?.() || []), effectiveParent]
-            : [];
-
-        // Handle context collisions
-        if (collisionStrategy === "error") {
-          this.checkContextCollisions(mergedContext);
-        }
-
-        // Store the full context
-        if (Object.keys(mergedContext).length > 0) {
-          errorContexts.set(this, { ...mergedContext });
-
-          // Assign all context properties to the error instance
-          Object.assign(this, mergedContext);
-        }
-
-        // Handle stack trace
-        if (captureStack && typeof Error?.captureStackTrace === "function") {
-          Error.captureStackTrace(this, CustomError);
-        } else if (captureStack) {
-          // Fallback for environments without captureStackTrace
-          this.stack = new Error().stack;
-        }
-
-        // Handle enumerable properties
-        if (enumerableProperties) {
-          this.makePropertiesEnumerable(enumerableProperties);
-        }
-
-        // Store the maxParentChainLength in the error instance for later use
-        if (maxParentChainLength) {
-          Object.defineProperty(this, "maxParentChainLength", {
-            value: maxParentChainLength,
-            enumerable: false,
-            configurable: true,
-          });
-        }
-      }
+      // Cache the materialized chain
+      this._materializedParents = chain;
+      return chain;
     }
 
     /**
-     * Checks if an error is in the parent chain to detect circular references
+     * Validate parent chain for circular references and depth
      */
-    private isInParentChain(potentialParent: Error): boolean {
-      let current: any = this.parent;
-      const seen = new WeakSet<Error>();
+    private validateParentChain(parent: Error, maxDepth: number): void {
+      // Check for direct circular reference
+      if (this === parent) {
+        throw new Error(
+          `Cannot set error as its own parent: ${name}`
+        );
+      }
 
-      while (current) {
+      // Check for circular reference in chain
+      let current: any = parent;
+      const seen = new WeakSet<Error>([this]);
+      let depth = 0;
+
+      while (current && depth < maxDepth) {
         if (seen.has(current)) {
-          return true; // Circular reference already exists
-        }
-
-        if (current === potentialParent) {
-          return true;
-        }
-
-        seen.add(current);
-        current = current.parent;
-      }
-
-      return false;
-    }
-
-    /**
-     * Checks for context property name collisions and throws an error if found
-     */
-    private checkContextCollisions(context: Record<string, unknown>): void {
-      // Get parent context keys
-      const parentKeys: string[] = [];
-
-      // First, get parent context keys from inheritance chain
-      if (this.inheritanceChain) {
-        for (const parentClass of this.inheritanceChain) {
-          const classKeys = errorClassKeys.get(parentClass.name) || [];
-          parentKeys.push(...classKeys);
-        }
-      }
-
-      // Check for collisions with parent context keys
-      for (const key in context) {
-        if (parentKeys.includes(key)) {
           throw new Error(
-            `Context property '${key}' conflicts with an existing property in parent context`,
+            `Circular reference detected in parent chain for ${name}`
           );
         }
+        seen.add(current);
+        current = current.parent;
+        depth++;
+      }
 
-        // Also check for collisions with standard Error properties
-        if (["name", "message", "stack", "toString", "constructor"].includes(key)) {
-          throw new Error(`Context property '${key}' conflicts with a standard Error property`);
+      if (depth >= maxDepth && current) {
+        throw new Error(
+          `Parent chain exceeds maximum depth of ${maxDepth} for ${name}`
+        );
+      }
+    }
+
+    /**
+     * Check for context property name collisions
+     */
+    private checkContextCollisions(
+      context: Record<string, unknown>,
+      parentErrorClass?: ParentError
+    ): void {
+      // Standard Error properties that cannot be overridden
+      const reservedProps = new Set([
+        "name", "message", "stack", "toString", "toJSON",
+        "constructor", "prototype"
+      ]);
+
+      for (const key in context) {
+        if (reservedProps.has(key)) {
+          throw new Error(
+            `Context property '${key}' conflicts with reserved Error property`
+          );
+        }
+      }
+
+      // Check collisions with parent context keys only if explicitly requested
+      if (parentErrorClass) {
+        const parentKeys = new Set(this.getInheritedContextKeys(parentErrorClass));
+        for (const key in context) {
+          if (parentKeys.has(key) && contextKeys.includes(key as any)) {
+            // Only error if this class is trying to redefine a parent key
+            throw new Error(
+              `Context property '${key}' conflicts with parent context key`
+            );
+          }
         }
       }
     }
 
     /**
-     * Makes selected properties enumerable
+     * Make selected properties enumerable
      */
     private makePropertiesEnumerable(enumerableProps: boolean | string[]): void {
       const propsToMakeEnumerable =
-        typeof enumerableProps === "boolean" ? ["name", "message", "stack"] : enumerableProps;
+        typeof enumerableProps === "boolean"
+          ? ["name", "message", "stack"]
+          : enumerableProps;
 
       for (const prop of propsToMakeEnumerable) {
         if (Object.prototype.hasOwnProperty.call(this, prop)) {
@@ -514,32 +541,48 @@ export function createCustomError<
       }
     }
 
-    // Removed compatibility mode method as it's not needed
-
     /**
-     * Custom toString method to include context and inheritance
+     * Custom toString method
+     * Includes context and inheritance information
      */
     toString(): string {
       const baseString = `${this.name}: ${this.message}`;
-      const context = errorContexts.get(this);
-      const inheritanceInfo =
-        this.inheritanceChain && this.inheritanceChain.length > 0
-          ? `\nInheritance Chain: ${this.inheritanceChain.map((e) => e.name).join(" > ")}`
-          : "";
-      const parentInfo = this.parent ? `\nParent: ${this.parent.name}: ${this.parent.message}` : "";
 
-      return context
-        ? `${baseString}\nCause: ${JSON.stringify(context, null, 2)}${inheritanceInfo}${parentInfo}`
-        : baseString;
+      // Get context from instance properties
+      const context = this.getOwnContext();
+      const contextStr = Object.keys(context).length > 0
+        ? `\nContext: ${JSON.stringify(context, null, 2)}`
+        : "";
+
+      const inheritanceStr =
+        this.inheritanceChain && this.inheritanceChain.length > 0
+          ? `\nInheritance: ${this.inheritanceChain.map((e) => e.name).join(" > ")}`
+          : "";
+
+      const parentStr = this.parent
+        ? `\nCaused by: ${this.parent.name}: ${this.parent.message}`
+        : "";
+
+      return `${baseString}${contextStr}${inheritanceStr}${parentStr}`;
     }
 
     /**
-     * Custom toJSON method for proper serialization with JSON.stringify
+     * Get context properties for this instance
+     * Uses WeakMap for O(1) lookup instead of key iteration
+     */
+    private getOwnContext(): Record<string, unknown> {
+      // Fast path: get full context from WeakMap
+      const fullContext = errorContexts.get(this);
+      if (!fullContext) return {};
+
+      // Return full context or filter to own keys
+      return fullContext;
+    }
+
+    /**
+     * Custom toJSON method for JSON.stringify
      */
     toJSON(): any {
-      const context = errorContexts.get(this);
-
-      // Create a base object with standard error properties
       const result: Record<string, any> = {
         name: this.name,
         message: this.message,
@@ -550,26 +593,29 @@ export function createCustomError<
         result.stack = this.stack;
       }
 
-      // Add context if available
-      if (context) {
-        result.cause = { ...context };
+      // Add context as 'cause' for backwards compatibility
+      const context = this.getOwnContext();
+      if (Object.keys(context).length > 0) {
+        result.cause = context;
       }
 
-      // Add parent info if available
+      // Add parent info
       if (this.parent) {
         result.parent = {
           name: this.parent.name,
           message: this.parent.message,
         };
 
-        // Add parent context if available
-        const parentContext = this.parent instanceof Error && errorContexts.get(this.parent);
-        if (parentContext) {
-          result.parent.cause = { ...parentContext };
+        // Add parent context if it has getOwnContext method
+        if (typeof (this.parent as any).getOwnContext === "function") {
+          const parentContext = (this.parent as any).getOwnContext();
+          if (Object.keys(parentContext).length > 0) {
+            result.parent.cause = parentContext;
+          }
         }
       }
 
-      // Add inheritance chain if available
+      // Add inheritance chain
       if (this.inheritanceChain && this.inheritanceChain.length > 0) {
         result.inheritanceChain = this.inheritanceChain.map((e) => e.name);
       }
@@ -578,13 +624,17 @@ export function createCustomError<
     }
   }
 
-  // Ensure name is correctly set on the constructor
+  // Set constructor name
   Object.defineProperty(CustomError, "name", { value: name });
 
   // Add static methods
   Object.defineProperties(CustomError, {
     /**
-     * Retrieves the context data from an error instance
+     * Get context from error instance
+     * 
+     * IMPLEMENTATION:
+     * Uses WeakMap for O(1) lookup (fast path)
+     * Only filters keys if includeParentContext: false
      */
     getContext: {
       value: (
@@ -596,26 +646,32 @@ export function createCustomError<
         | undefined => {
         if (!(error instanceof Error)) return undefined;
 
+        // Fast path: get full context from WeakMap
         const fullContext = errorContexts.get(error);
         if (!fullContext) return undefined;
 
+        // FAST PATH: If including parent context or no filtering needed, return immediately
+        // This avoids all the filtering logic overhead
         if (options?.includeParentContext !== false) {
-          // Return the full context
-          return fullContext;
+          return fullContext as any;
         }
 
-        // If we only want this class's context, filter for the specified keys
-        const result: Record<string, unknown> = {};
-        const keys = errorClassKeys.get(name);
-        if (keys) {
-          for (const key of keys) {
-            if (key in fullContext) {
-              result[key] = fullContext[key];
-            }
+        // SLOW PATH: Filter to only this class's keys
+        // This path is only taken when explicitly requested
+        const ownKeys = errorClassKeys.get(name);
+        if (!ownKeys || ownKeys.length === 0) {
+          return undefined;
+        }
+
+        // Build filtered context with only own keys
+        const filtered: Record<string, unknown> = {};
+        for (const key of ownKeys) {
+          if (key in fullContext) {
+            filtered[key] = fullContext[key];
           }
         }
 
-        return Object.keys(result).length > 0 ? (result as any) : undefined;
+        return Object.keys(filtered).length > 0 ? (filtered as any) : undefined;
       },
       enumerable: false,
       configurable: true,
@@ -630,44 +686,36 @@ export function createCustomError<
 
         const hierarchy: CustomErrorHierarchyItem[] = [];
         const seen = new WeakSet<Error>();
-        let currentError:
-          | (Error & {
-            inheritanceChain?: CustomErrorClass<any>[];
-            parent?: Error;
-          })
-          | undefined = error;
+        let currentError: any = error;
 
         while (currentError) {
-          // Check for circular references
           if (seen.has(currentError)) {
             console.warn("Circular reference detected in error hierarchy");
             break;
           }
           seen.add(currentError);
 
+          // Get context for this error
+          const context =
+            typeof currentError.getOwnContext === "function"
+              ? currentError.getOwnContext()
+              : undefined;
+
           const hierarchyItem: CustomErrorHierarchyItem = {
             name: currentError.name,
             message: currentError.message,
-            context: errorContexts.get(currentError),
+            context,
             inheritanceChain: currentError.inheritanceChain
-              ? currentError.inheritanceChain.map((e) => e.name)
+              ? currentError.inheritanceChain.map((e: any) => e.name)
               : undefined,
           };
 
-          // Add parent if it exists
           if (currentError.parent) {
             hierarchyItem.parent = `${currentError.parent.name}: ${currentError.parent.message}`;
           }
 
           hierarchy.push(hierarchyItem);
-
-          // Move to the next error in the chain
-          currentError = currentError.parent as
-            | (Error & {
-              inheritanceChain?: CustomErrorClass<any>[];
-              parent?: Error;
-            })
-            | undefined;
+          currentError = currentError.parent;
         }
 
         return hierarchy;
@@ -677,10 +725,50 @@ export function createCustomError<
     },
 
     /**
-     * Follows the chain of parents and returns them as an array
+     * Follow the parent chain
+     * 
+     * For custom errors with inheritance chains, this will lazily materialize
+     * parent instances on first call, then use the cached chain
+     * 
+     * OPTIMIZATION: Check for inheritance chain first before calling `materializeParentChain`
+     * This avoids function call overhead for errors without inheritance
      */
     followParentChain: {
       value: (error: Error & { parent?: Error }, maxDepth = 100): Error[] => {
+        // FAST PATH: Check if this error has an inheritance chain to materialize
+        // This is faster than checking for the method existence
+        const hasInheritance = (error as any).inheritanceChain?.length > 0;
+
+        if (hasInheritance && typeof (error as any).materializeParentChain === 'function') {
+          // Custom error with inheritance - use lazy materialization
+          const materializedChain = (error as any).materializeParentChain();
+
+          // After materializing inheritance chain, follow any explicit parent links
+          // from the last item in the materialized chain
+          let lastInChain = materializedChain[materializedChain.length - 1];
+          let current = lastInChain.parent;
+          const seen = new WeakSet<Error>(materializedChain);
+          let depth = materializedChain.length;
+
+          while (current && depth < maxDepth) {
+            if (seen.has(current)) {
+              console.warn("Circular reference detected in parent chain");
+              break;
+            }
+            seen.add(current);
+            materializedChain.push(current);
+            current = (current as any).parent;
+            depth++;
+          }
+
+          if (depth >= maxDepth && current) {
+            console.warn(`Maximum parent chain depth (${maxDepth}) reached`);
+          }
+
+          return materializedChain;
+        }
+
+        // FAST PATH: No inheritance - simple parent chain traversal
         const chain = [error];
         let current = error.parent;
         const seen = new WeakSet<Error>([error]);
@@ -688,7 +776,7 @@ export function createCustomError<
 
         while (current && depth < maxDepth) {
           if (seen.has(current)) {
-            console.warn("Circular reference detected in error chain");
+            console.warn("Circular reference detected in parent chain");
             break;
           }
           seen.add(current);
@@ -708,18 +796,19 @@ export function createCustomError<
     },
 
     /**
-     * Returns the inheritance chain of error classes
+     * Get inheritance chain of error classes
      */
     getInstances: {
       value: (): CustomErrorClass<any>[] => {
         if (!parentError || parentError === (Error as unknown as ParentError)) {
-          // If no parent, return empty array
           return [];
         }
 
-        // If parent exists, get its instances and add parent
         const parentChain =
-          typeof parentError.getInstances === "function" ? parentError.getInstances?.() || [] : [];
+          typeof parentError.getInstances === "function"
+            ? parentError.getInstances() || []
+            : [];
+
         return [...parentChain, parentError];
       },
       enumerable: false,
@@ -727,31 +816,32 @@ export function createCustomError<
     },
 
     /**
-     * Creates a simplified error with minimal overhead for high-performance scenarios
+     * Create fast error with minimal overhead
+     * 
+     * PERFORMANCE OPTIMIZATIONS:
+     * - No stack capture
+     * - No enumerable properties
+     * - Direct context assignment
+     * - Skip validation checks
      */
     createFast: {
       value: (message: string, context?: Partial<OwnContext>): Error & OwnContext => {
         const error = new CustomError({
           message,
-          //@ts-expect-error - context is not strictly typed
-          cause: context || {},
+          cause: (context || {}) as OwnContext,
           captureStack: false,
           enumerableProperties: false,
           collisionStrategy: "override",
         });
-        if (context) {
-          Object.assign(error, context);
-        }
 
-        // @ts-expect-error - We are creating a new instance of CustomError
-        return error;
+        return error as unknown as Error & OwnContext;
       },
       enumerable: false,
       configurable: true,
     },
   });
 
-  // Store the custom error class in registry with proper name
+  // Register in global registry
   customErrorRegistry.set(name, CustomError as any);
 
   return CustomError as unknown as CustomErrorClass<
@@ -761,7 +851,7 @@ export function createCustomError<
 
 /**
  * Get a registered error class by name
- *
+*
  * @param name The name of the error class to retrieve
  * @returns The custom error class or undefined if not found
  *

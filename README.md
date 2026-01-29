@@ -5,7 +5,6 @@ Complete with:
 - Hierarchical error classes 
 - Advanced context tracking
 - Inheritance and diagnostic capabilities
-- Performance optimizations
 - Circular reference protection
 
 Its a *fuzzy* sort of idea, that by having a form of *contextual-based error support* we can **craft better consequences** when an `error` is eventually *thrown* in our near perfect code-bases.  
@@ -20,8 +19,6 @@ Unlike standard JavaScript `class Error`'s or basic custom error extensions (for
 - **Rich contextual data** with strong TypeScript typing
 - **Parent-child error relationships** for comprehensive error chains
 - **Context inheritance** from parent errors to child errors
-- **Advanced error analysis tools** for debugging and logging
-- **Performance optimizations** for high-frequency error creation
 
 ## ✨ Features
 
@@ -32,14 +29,13 @@ Unlike standard JavaScript `class Error`'s or basic custom error extensions (for
 - 🔍 **Error Inspection** - Utilities for exploring error contexts and hierarchies
 - 📝 **Customizable Serialization** - Enhanced `.toString()` and `.toJSON()` for better logging
 - 🔁 **Circular Reference Protection** - Safe traversal of complex error hierarchies
-- ⚡ **Performance Optimizations** - Fast error creation for high-frequency scenarios (~40% faster)
+- ⚡ **Performance Optimizations** - Optimized for high-frequency error creation with minimal overhead
 - 💥 **Collision Detection** - Configurable strategies for handling property name collisions
 - 🏦 **Registry Management** - Access to all registered error classes for global management
 - 💻 **Developer-Friendly API** - A very simple yet powerful interface that us developers deserve
 - 🆓 **Dependency Free** - Yes, its completely devoid of any external dependencies
 - 🪖 **Battle tested** - Rigiourly tested API surface, trusted to last.
 - 💚 **Runtime & Environment** friendly, it can be run literally anywhere; In the browser, on the server, perhaps in your little IOT, heck even in your cup of tea!
-
 
 ## 📦 Installation
 
@@ -246,20 +242,6 @@ try {
 }
 ```
 
-### High-Performance Error Creation
-
-```typescript
-function logApiError(statusCode, endpoint) {
-  // 🚫 For performance-critical paths, use createFast (40% faster)
-  // Fast error creation without stack traces or extra processing
-  const error = ApiError.createFast("API request failed", {
-    statusCode,
-    endpoint
-  });
-  
-  errorLogger.log(error);
-}
-```
 
 ### Accessing Error Registry
 
@@ -354,7 +336,7 @@ Returns the complete inheritance chain of error classes.
 
 #### `.createFast(message, context?)`
 
-Creates an error instance with minimal overhead for extremely high-performance scenarios and workloads.
+Creates an error instance with reduced processing; it can skip stack capture and optional features to minimize work when desired.
 
 **Parameters:**
 - `message`: `string` - Error message

@@ -1,0 +1,560 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>@fuzzy-street/errors Performance Analysis-v2</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      color: #333;
+    }
+    h1, h2 {
+      color: #0066cc;
+    }
+    .benchmark {
+      margin-bottom: 30px;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      background-color: #f9f9f9;
+    }
+    .metrics {
+      display: flex;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .metric {
+      flex: 1;
+      min-width: 200px;
+      margin: 10px;
+      padding: 15px;
+      background-color: #fff;
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .metric h3 {
+      margin-top: 0;
+      color: #666;
+      font-size: 14px;
+      text-transform: uppercase;
+    }
+    .metric .value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #0066cc;
+    }
+    .system-info {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 10px;
+      margin-bottom: 30px;
+      padding: 15px;
+      background-color: #f0f0f0;
+      border-radius: 4px;
+    }
+    .chart-container {
+      margin-top: 20px;
+      height: 300px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+    .footer {
+      margin-top: 30px;
+      padding-top: 10px;
+      border-top: 1px solid #ddd;
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <h1>@fuzzy-street/errors Performance Analysis-v2</h1>
+  <p>Generated: 2026-01-29T14:27:55.640Z</p>
+  
+  
+  <div class="system-info">
+    <div><strong>Platform:</strong> linux</div>
+    <div><strong>Node.js:</strong> v24.11.0</div>
+    <div><strong>Architecture:</strong> x64</div>
+    <div><strong>CPU:</strong> AMD Ryzen 5 3600 6-Core Processor</div>
+    <div><strong>CPU Cores:</strong> 12</div>
+    <div><strong>Total Memory:</strong> 19.51 GB</div>
+  </div>
+  
+
+  <div id="benchmarks">
+    <div class="benchmark" id="benchmark-0">
+      <h2>Native Error</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">311.40 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">321125.72</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">-0.52 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-1">
+      <h2>Simple Custom Error</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">1194.82 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">83694.36</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">6.00 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-2">
+      <h2>Custom Error + Stack Capture</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">1122.31 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">89102.31</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">1.82 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-3">
+      <h2>Two-Level Inheritance</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">2523.43 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">39628.68</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">0.18 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-4">
+      <h2>Three-Level Inheritance</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">3372.11 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">29655.00</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">8.50 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-5">
+      <h2>Deep Nested Context</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">1452.47 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">68848.43</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">19.53 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-6">
+      <h2>Direct Property - Simple</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">18.12 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">55176066.83</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">0.01 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-7">
+      <h2>getContext() - Simple</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">15.04 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">66475120.82</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">0.01 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-8">
+      <h2>Direct Property - Inherited</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">14.79 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">67593275.85</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">0.01 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-9">
+      <h2>getContext() - Inherited (Full)</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">12.58 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">79522325.30</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">0.00 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-10">
+      <h2>getContext() - Inherited (Own Only)</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">139.09 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">7189561.82</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">-6.74 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-11">
+      <h2>Deep Nested Direct Access</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">23.38 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">42771676.49</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">0.00 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-12">
+      <h2>Deep Nested via getContext()</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">16.23 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">61596301.41</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">0.01 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-13">
+      <h2>followParentChain - No Parents</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">7.88 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">12697467.85</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">-8.24 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-14">
+      <h2>followParentChain - 1 Parent</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">13.90 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">7195412.44</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">12.99 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-15">
+      <h2>followParentChain - 2 Parents</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">16.38 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">6104133.71</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">-18.88 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-16">
+      <h2>getErrorHierarchy - No Parents</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">18.67 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">5357614.61</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">12.41 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-17">
+      <h2>getErrorHierarchy - 1 Parent</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">38.90 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">2570426.01</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">-2.93 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-18">
+      <h2>getErrorHierarchy - 2 Parents</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">53.52 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">1868448.52</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">-13.23 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-19">
+      <h2>Native Error - toString</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">7.58 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">6592421.06</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">2.29 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-20">
+      <h2>Custom Error - toString</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">19.92 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">2510266.74</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">11.84 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-21">
+      <h2>Complex Error - toString</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">43.25 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">1156202.07</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">-1.42 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-22">
+      <h2>Native Error - JSON.stringify</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">4.93 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">10151599.93</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">1.15 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-23">
+      <h2>Custom Error - JSON.stringify</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">61.62 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">811415.47</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">-10.25 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+    <div class="benchmark" id="benchmark-24">
+      <h2>Complex Error - JSON.stringify</h2>
+      
+      <div class="metrics">
+        <div class="metric">
+          <h3>Duration</h3>
+          <div class="value">102.60 ms</div>
+        </div>
+        <div class="metric">
+          <h3>Operations/sec</h3>
+          <div class="value">487320.53</div>
+        </div>
+        <div class="metric">
+          <h3>Memory Used</h3>
+          <div class="value">14.78 MB</div>
+        </div>
+      </div><!-- end of metrics -->
+    </div><!-- end of benchmark -->
+  </div><!-- end of benchmarks -->
+  
+  <div class="footer">
+    <p>Generated by @fuzzy-street/benchmarks</p>
+  </div>
+</body>
+</html>
