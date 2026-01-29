@@ -561,20 +561,28 @@ context: Record<string, unknown>,
     // Removed compatibility mode method as it's not needed
 
     /**
-     * Custom toString method to include context and inheritance
+     * Custom toString method
+     * Includes context and inheritance information
      */
     toString(): string {
       const baseString = `${this.name}: ${this.message}`;
-      const context = errorContexts.get(this);
-      const inheritanceInfo =
-        this.inheritanceChain && this.inheritanceChain.length > 0
-          ? `\nInheritance Chain: ${this.inheritanceChain.map((e) => e.name).join(" > ")}`
-          : "";
-      const parentInfo = this.parent ? `\nParent: ${this.parent.name}: ${this.parent.message}` : "";
 
-      return context
-        ? `${baseString}\nCause: ${JSON.stringify(context, null, 2)}${inheritanceInfo}${parentInfo}`
-        : baseString;
+      // Get context from instance properties
+      const context = this.getOwnContext();
+const contextStr = Object.keys(context).length > 0
+        ? `\nContext: ${JSON.stringify(context, null, 2)}`
+        : "";
+
+      const inheritanceStr =
+        this.inheritanceChain && this.inheritanceChain.length > 0
+          ? `\nInheritance: ${this.inheritanceChain.map((e) => e.name).join(" > ")}`
+          : "";
+
+      const parentStr = this.parent
+? `\nCaused by: ${this.parent.name}: ${this.parent.message}`
+: "";
+
+      return `${baseString}${contextStr}${inheritanceStr}${parentStr}`;
     }
 
     /**
