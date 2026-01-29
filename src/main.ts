@@ -475,24 +475,35 @@ declare     stack: string;
     /**
      * Validate parent chain for circular references and depth
      */
-    private isInParentChain(potentialParent: Error): boolean {
-      let current: any = this.parent;
-      const seen = new WeakSet<Error>();
-
-      while (current) {
-        if (seen.has(current)) {
-          return true; // Circular reference already exists
-        }
-
-        if (current === potentialParent) {
-          return true;
-        }
-
-        seen.add(current);
-        current = current.parent;
+    private validateParentChain(parent: Error, maxDepth: number): void {
+      // Check for direct circular reference
+      if (this === parent) {
+        throw new Error(
+          `Cannot set error as its own parent: ${name}`
+        );
       }
 
-      return false;
+      // Check for circular reference in chain
+      let current: any = parent;
+      const seen = new WeakSet<Error>([this]);
+let depth = 0;
+
+      while (current && depth < maxDepth) {
+        if (seen.has(current)) {
+          throw new Error(
+            `Circular reference detected in parent chain for ${name}`
+          );
+        }
+        seen.add(current);
+        current = current.parent;
+      depth++;
+      }
+
+      if (depth >= maxDepth && current) {
+        throw new Error(
+          `Parent chain exceeds maximum depth of ${maxDepth} for ${name}`
+        );
+      }
     }
 
     /**
