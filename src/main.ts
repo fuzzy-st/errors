@@ -590,8 +590,16 @@ const contextStr = Object.keys(context).length > 0
      */
     toJSON(): any {
       const context = errorContexts.get(this);
+if (!fullContext) return {};
 
-      // Create a base object with standard error properties
+      // Return full context or filter to own keys
+      return fullContext;
+    }
+
+    /**
+     * Custom toJSON method for JSON.stringify
+     */
+    toJSON(): any {
       const result: Record<string, any> = {
         name: this.name,
         message: this.message,
@@ -602,26 +610,29 @@ const contextStr = Object.keys(context).length > 0
         result.stack = this.stack;
       }
 
-      // Add context if available
-      if (context) {
-        result.cause = { ...context };
+      // Add context as 'cause' for backwards compatibility
+      const context = this.getOwnContext();
+      if (Object.keys(context).length > 0) {
+        result.cause = context;
       }
 
-      // Add parent info if available
+      // Add parent info
       if (this.parent) {
         result.parent = {
           name: this.parent.name,
           message: this.parent.message,
         };
 
-        // Add parent context if available
-        const parentContext = this.parent instanceof Error && errorContexts.get(this.parent);
-        if (parentContext) {
-          result.parent.cause = { ...parentContext };
+        // Add parent context if it has getOwnContext method
+        if (typeof (this.parent as any).getOwnContext === "function") {
+          const parentContext = (this.parent as any).getOwnContext();
+        if (Object.keys(parentContext).length > 0) {
+          result.parent.cause = parentContext;
+          }
         }
       }
 
-      // Add inheritance chain if available
+      // Add inheritance chain
       if (this.inheritanceChain && this.inheritanceChain.length > 0) {
         result.inheritanceChain = this.inheritanceChain.map((e) => e.name);
       }
