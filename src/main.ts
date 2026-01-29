@@ -742,10 +742,50 @@ if (!fullContext) return {};
     },
 
     /**
-     * Follows the chain of parents and returns them as an array
+     * Follow the parent chain
+     * 
+     * For custom errors with inheritance chains, this will lazily materialize
+     * parent instances on first call, then use the cached chain
+     * 
+     * OPTIMIZATION: Check for inheritance chain first before calling `materializeParentChain`
+     * This avoids function call overhead for errors without inheritance
      */
     followParentChain: {
       value: (error: Error & { parent?: Error }, maxDepth = 100): Error[] => {
+// FAST PATH: Check if this error has an inheritance chain to materialize
+        // This is faster than checking for the method existence
+        const hasInheritance = (error as any).inheritanceChain?.length > 0;
+
+        if (hasInheritance && typeof (error as any).materializeParentChain === 'function') {
+          // Custom error with inheritance - use lazy materialization
+          const materializedChain = (error as any).materializeParentChain();
+
+          // After materializing inheritance chain, follow any explicit parent links
+          // from the last item in the materialized chain
+          let lastInChain = materializedChain[materializedChain.length - 1];
+          let current = lastInChain.parent;
+          const seen = new WeakSet<Error>(materializedChain);
+          let depth = materializedChain.length;
+
+          while (current && depth < maxDepth) {
+            if (seen.has(current)) {
+              console.warn("Circular reference detected in parent chain");
+              break;
+            }
+            seen.add(current);
+            materializedChain.push(current);
+            current = (current as any).parent;
+            depth++;
+          }
+
+          if (depth >= maxDepth && current) {
+            console.warn(`Maximum parent chain depth (${maxDepth}) reached`);
+          }
+
+          return materializedChain;
+        }
+
+        // FAST PATH: No inheritance - simple parent chain traversal
         const chain = [error];
         let current = error.parent;
         const seen = new WeakSet<Error>([error]);
@@ -753,7 +793,7 @@ if (!fullContext) return {};
 
         while (current && depth < maxDepth) {
           if (seen.has(current)) {
-            console.warn("Circular reference detected in error chain");
+            console.warn("Circular reference detected in parent chain");
             break;
           }
           seen.add(current);
