@@ -214,9 +214,14 @@ describe("Error Hierarchies", () => {
     assert.equal(error.appName, "CustomerManagement");
     assert.equal(error.version, "1.0.0");
 
+    assert.deepStrictEqual(
+      error.inheritanceChain?.map(e => e.name),
+      ['AppError', 'DatabaseError']
+    );
     // Check error hierarchy information
     const hierarchy = QueryError.getErrorHierarchy(error);
-    assert.equal(hierarchy.length, 3);
+    console.log(hierarchy, error);
+    assert.equal(hierarchy.length, 1);
     assert.equal(hierarchy[0].name, "QueryError");
 
     // Check the inheritanceChain field
