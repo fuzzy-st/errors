@@ -129,7 +129,7 @@ export interface CustomErrorHierarchyItem {
   inheritanceChain?: string[];
 }
 
-// WeakMap to store full context
+// WeakMap for context storage - allows GC to clean up when error is collected
 const errorContexts = new WeakMap<Error, any>();
 
 // Store context keys per error class
