@@ -12,3 +12,100 @@ _.path = ['{{config_root}}/node_modules/.bin']
 HK_MISE = 1
 MISE_NPM_PACKAGE_MANAGER="pnpm"
 
+# ============================================================================
+# Project Tasks
+# These tasks help manage the project using pnpm scripts
+# See https://mise.jdx.dev/tasks/toml-tasks.html for more details
+# ============================================================================
+
+[tasks.'dev']
+run = "pnpm dev"
+description = "Start the file watcher over the project"
+
+[tasks.'build']
+run = "pnpm build"
+description = "Build the project for packaging to node registry"
+
+[tasks.'test']
+run = "pnpm test"
+description = "Run the test suite"
+
+[tasks.'tests:watch']
+run = "pnpm test:watch"
+description = "Run the test suite in watch mode"
+
+[tasks.'tests:ci']
+run = "pnpm test:ci"
+description = "Run the test suite in CI mode"
+
+[tasks.'lint']
+run = "pnpm lint"
+description = "Run the Biome linter over the project"
+
+[tasks.'format']
+run = "pnpm format"
+description = "Run the Biome formatter over the project"
+
+[tasks.'check']
+run = "pnpm check"
+description = "Run type checking over the project"
+
+[tasks.'examples']
+run = "pnpm examples"
+description = "Demo the examples over the project"
+
+[tasks.'release:minor']
+run = "pnpm release:minor"
+description = "Release a minor version"
+depends = ["lint","test","build"]
+depends_post = "cut-release"
+
+[tasks.'release:patch']
+run = "pnpm release:patch"
+description = "Release a patch version"
+depends = ["lint","test","build",]
+depends_post = "cut-release"
+
+[tasks.'release:major']
+run = "pnpm release:major"
+description = "Release a major version"
+depends = ["lint","test","build",]
+depends_post = "cut-release"
+
+[tasks.'cut-release']
+run = "pnpm cut-release"
+description = "Push the release to remote repository"
+
+[tasks.'rollback-release']
+run = "pnpm rollback-release"
+description = "Rollback the last release, resetting to previous commit and force pushing to remote repository. This action is irreversible! Use with caution."
+
+# ============================================================================
+# GitHooks Tasks 
+# These tasks help manage git hooks using hk
+# See https://hk.jdx.dev/ for more details
+# ============================================================================
+
+[tasks."githooks:install"]
+description = "Install hk hooks and fix shebangs"
+run = """
+hk install
+
+# replaces the shell shebang with bash from the environment
+
+sed -i '1s|^#!/bin/sh|#!/usr/bin/env bash|' .git/hooks/pre-commit
+sed -i '1s|^#!/bin/sh|#!/usr/bin/env bash|' .git/hooks/commit-msg
+sed -i '1s|^#!/bin/sh|#!/usr/bin/env bash|' .git/hooks/pre-push
+echo "✅ Hooks installed and fixed"
+"""
+
+[tasks."githooks:check"]
+description = "Run checks without fixing"
+run = "hk check"
+
+[tasks."githooks:fix"]
+description = "Run checks and fix issues"
+run = "hk fix"
+
+[tasks."githooks:pre-commit"]
+run = "hk run pre-commit"
