@@ -3,3 +3,12 @@ node = "lts"
 pnpm = "latest"
 hk = "latest"
 pkl = "latest"
+
+[prepare.pnpm]
+auto = true
+
+[env]
+_.path = ['{{config_root}}/node_modules/.bin']
+HK_MISE = 1
+MISE_NPM_PACKAGE_MANAGER="pnpm"
+
