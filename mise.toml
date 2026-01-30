@@ -3,6 +3,7 @@ node = "lts"
 pnpm = "latest"
 hk = "latest"
 pkl = "latest"
+biome = "latest"
 
 [prepare.pnpm]
 auto = true
