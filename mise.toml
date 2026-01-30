@@ -1,3 +1,5 @@
 [tools]
 node = "lts"
 pnpm = "latest"
+hk = "latest"
+pkl = "latest"

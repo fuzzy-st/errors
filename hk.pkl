@@ -1,0 +1,68 @@
+// A configuration file for Git hooks using hk
+// see https://hk.jdx.dev/configuration.html
+
+amends "package://github.com/jdx/hk/releases/download/v1.24.1/hk@1.24.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v1.24.1/hk@1.24.1#/Builtins.pkl"
+
+local linters = new Mapping<String, Step> {
+  ["biome"] = new Step {
+    batch = true
+    glob = List(
+      "**/*.js",
+      "**/*.ts",
+      "**/*.jsx",
+      "**/*.tsx",
+      "**/*.json"
+    )
+    exclude = List(
+      "**/node_modules/**",
+      "**/dist/**",
+      "**/build/**",
+      "**/.turbo/**",
+      "**/coverage/**",
+      "**/tests/**"
+    )
+    check = "biome check {{files}}"
+    fix = "biome check --fix --format-with-errors=true {{files}}"
+  }
+  
+  ["pkl"] {
+    glob = List("*.pkl")
+    check = "pkl eval {{files}} >/dev/null"
+  }
+}
+
+local commitlint = new Step {
+  check = "pnpm exec commitlint --edit \"$1\""
+}
+local noop = new Step {
+  check = "echo 'No operation performed.'"
+}
+hooks {
+  ["pre-commit"] {
+    fix = true
+    stash = "git"
+    steps = linters
+  }
+
+  ["commit-msg"] {
+    steps {
+      ["commitlint"] = commitlint
+    }
+  }
+
+  ["check"] {
+    steps = linters
+  }
+
+  ["fix"] {
+    fix = true
+    steps = linters
+  }
+
+  ["pre-push"] {
+    steps {
+      ["noop"] = noop
+    }
+  }
+}
