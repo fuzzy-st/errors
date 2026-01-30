@@ -31,22 +31,23 @@
     "format": "biome format --fix --write",
     "setup-hooks": "node setup-git-hooks.js",
     "release": "standard-version",
+    "release:prerelease": "standard-version --prerelease",
     "release:minor": "standard-version --release-as minor",
     "release:patch": "standard-version --release-as patch",
     "release:major": "standard-version --release-as major",
-    "cut-release": "git push --follow-tags origin main"
+    "cut-release": "git push --follow-tags origin main",
+    "rollback-release": "git reset --hard HEAD~1 && git push origin main --force"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
-    "@commitlint/cli": "^19.8.0",
-    "@commitlint/config-conventional": "^19.8.0",
+    "@commitlint/cli": "^19.8.1",
+    "@commitlint/config-conventional": "^19.8.1",
     "@fuzzy-street/benchmarks": "^0.3.2",
-    "@types/node": "^22.14.0",
-    "lint-staged": "^15.5.0",
+    "@types/node": "^22.19.7",
+    "lint-staged": "^15.5.2",
     "standard-version": "^9.5.0",
-    "tsup": "^8.4.0",
-    "tsx": "^4.19.3",
-    "typescript": "^5.8.2"
+    "tsup": "^8.5.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   },
   "directories": {
     "doc": "docs"
