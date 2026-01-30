@@ -1,0 +1,115 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  id-token: write  # Required for OIDC token generation
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: npm-release
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          # Omit registry-url - we're using OIDC, not token auth
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Test
+        run: pnpm test
+      
+      - name: Build
+        run: pnpm build
+      
+      - name: Detect prerelease
+        id: prerelease
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [[ "$TAG" =~ - ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Publish to npm (OIDC)
+        run: |
+          set +e
+          
+          if [[ "${{ steps.prerelease.outputs.is_prerelease }}" == "true" ]]; then
+            pnpm publish --provenance --access public --tag next --no-git-checks 2>&1 | tee publish.log
+            EXIT_CODE=${PIPESTATUS[0]}
+          else
+            pnpm publish --provenance --access public --no-git-checks 2>&1 | tee publish.log
+            EXIT_CODE=${PIPESTATUS[0]}
+          fi
+          
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo ""
+            echo "❌ npm publish failed"
+            echo ""
+            
+            if grep -qi "401\|unauthorized\|authentication" publish.log; then
+              PACKAGE_NAME=$(jq -r .name package.json)
+              echo "Authentication failed - you're not logged in via OIDC"
+              echo ""
+              echo "This means the npm trusted publisher isn't configured for this package."
+              echo ""
+              echo "Fix it here:"
+              echo "  https://www.npmjs.com/package/${PACKAGE_NAME}/access"
+              echo ""
+              echo "Add GitHub Actions as trusted publisher:"
+              echo "  Provider: GitHub Actions"
+              echo "  Repository: ${{ github.repository }}"
+              echo "  Workflow: .github/workflows/release.yml"
+              echo ""
+              echo "Docs: https://docs.npmjs.com/trusted-publishers"
+            else
+              echo "Publish failed for unknown reason. Check the output above."
+            fi
+            
+            echo ""
+            exit $EXIT_CODE
+          fi
+          
+          echo "✅ Published successfully"
+        env:
+          NPM_CONFIG_PROVENANCE: true
+      
+      - name: Generate changelog
+        id: changelog
+        uses: TriPSs/conventional-changelog-action@v5
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          git-push: 'false'
+          skip-version-file: 'true'
+          skip-commit: 'true'
+          skip-git-pull: 'true'
+          output-file: 'CHANGELOG.md'
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: ${{ steps.changelog.outputs.skipped == 'false' }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          prerelease: ${{ steps.prerelease.outputs.is_prerelease }}
+          body: ${{ steps.changelog.outputs.clean_changelog }}
+          generate_release_notes: true
