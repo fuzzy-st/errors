@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.0.0](https://github.com/fuzzy-st/errors/compare/v1.1.0...v2.0.0) (2026-01-31)
+
+
+### Features
+
+* major v2 refactor of error handling system with performance, clarity, and inheritance improvements ([d206099](https://github.com/fuzzy-st/errors/commit/d2060994a7b3cc927cc7e32ff1ee4bb52779352b))
+
 ## [1.1.0](https://github.com/fuzzy-st/errors/compare/v1.0.0...v1.1.0) (2025-04-25)
 
 ## 1.0.0 (2025-04-06)
