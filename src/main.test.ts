@@ -737,7 +737,7 @@ describe("Edge Cases and Special Behaviors", () => {
   test("should handle null or undefined cause gracefully", () => {
     const SimpleError = createCustomError("SimpleError", []);
 
-    // @ts-ignore - Deliberately passing undefined to test error handling
+    // @ts-expect-error - Deliberately passing undefined to test error handling
     const error1 = new SimpleError({
       message: "Test error",
       cause: undefined,
@@ -749,7 +749,7 @@ describe("Edge Cases and Special Behaviors", () => {
 
     const error2 = new SimpleError({
       message: "Test error",
-      // @ts-ignore - Deliberately passing null to test error handling
+      // @ts-expect-error - Deliberately passing null to test error handling
       cause: null,
     });
 
@@ -799,7 +799,7 @@ describe("Edge Cases and Special Behaviors", () => {
   test("should handle default message when not provided", () => {
     const SimpleError = createCustomError("SimpleError", []);
 
-    // @ts-ignore - Deliberately not providing message to test defaults
+    // @ts-expect-error - Deliberately not providing message to test defaults
     const error = new SimpleError({});
 
     assert.equal(error.name, "SimpleError");

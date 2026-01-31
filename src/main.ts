@@ -532,7 +532,7 @@ export function createCustomError<
           : enumerableProps;
 
       for (const prop of propsToMakeEnumerable) {
-        if (Object.prototype.hasOwnProperty.call(this, prop)) {
+        if (Object.hasOwn(this, prop)) {
           Object.defineProperty(this, prop, {
             enumerable: true,
             configurable: true,
@@ -745,7 +745,7 @@ export function createCustomError<
 
           // After materializing inheritance chain, follow any explicit parent links
           // from the last item in the materialized chain
-          let lastInChain = materializedChain[materializedChain.length - 1];
+          const lastInChain = materializedChain[materializedChain.length - 1];
           let current = lastInChain.parent;
           const seen = new WeakSet<Error>(materializedChain);
           let depth = materializedChain.length;
