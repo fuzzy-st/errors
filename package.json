@@ -27,8 +27,6 @@
     "test:ci": "node --import tsx --experimental-test-coverage --test-reporter=spec --test \"**/*.test.{ts,js}\" || echo 'No test files found or tests failed'",
     "test:watch": "node --import tsx --test-reporter=spec  --test --watch \"**/*.test.{ts,js}\"",
     "check": "tsc --noEmit",
-    "lint": "biome lint --fix",
-    "format": "biome format --fix --write",
     "setup-hooks": "node setup-git-hooks.js",
     "release": "standard-version",
     "release:prerelease": "standard-version --prerelease",
