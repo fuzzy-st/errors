@@ -15,7 +15,7 @@ jobs:
     environment: npm-release
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       
@@ -25,10 +25,11 @@ jobs:
           version: latest
       
       - name: Use Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '24'
           cache: 'pnpm'
+          package-manager-cache: true
           # Omit registry-url - we're using OIDC, not token auth
       
       - name: Install dependencies
