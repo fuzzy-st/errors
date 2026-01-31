@@ -40,7 +40,7 @@ run = "pnpm test:ci"
 description = "Run the test suite in CI mode"
 
 [tasks.'lint']
-run = "pnpm lint"
+run = "biome lint --fix"
 description = "Run the Biome linter over the project"
 
 [tasks.'format']
